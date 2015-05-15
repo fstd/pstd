@@ -1,0 +1,32 @@
+pstd(1)                             FOOPASTE                            pstd(1)
+
+NAME
+    pstd: another command line pastebin.
+
+SYNOPSIS
+    # Installation
+    #  wget -O /usr/local/bin/pstd http://paste.pr0.tips/0 && chmod +x /usr/local/bin/pstd
+    # (You can also skip installing this and use wget directly, see below)
+    
+    $ Use:
+    $  <command> | pstd
+    $ Or:
+    $  pstd < <file>
+    $ Or if you don't feel like using the paste script:
+    $  wget -q --post-file <file> http://paste.pr0.tips/
+
+DESCRIPTION
+    pstd (pasted) is yet another command-line pastebin similar to and inspired by sprunge.us.
+    It currently depends on wget(1).
+
+EXAMPLES
+    $ cat /etc/passwd | pstd
+    $ pstd -s other.pstd.site.com < /etc/passwd
+    $ wget -q --post-file /etc/passwd http://paste.pr0.tips/
+
+SEE ALSO
+    http://github.com/fstd/pstd
+
+CREDITS
+    Lots of inspiration (but no code) taken from http://sprungs.us
+    (http://github.com/rupa/sprunge)
