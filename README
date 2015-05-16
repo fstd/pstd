@@ -2,20 +2,92 @@ pstd (pasted) - command line pastebin (version 0.0.1)
 =====================================================
 
 
-
 Quickstart for running a pstd paste site
 ----------------------------------------
-(To be documented in detail later, but as a quick example, this is how http://paste.pr0.tips/ is run)
+(To be documented in detail later, but as a quick example, this is how
+http://paste.pr0.tips/ is run (referring to it as example.com henceforth)
 
+# Optional: authbind setup (assuming it is installed)
+$ sudo touch /etc/authbind/byport/80
+$ sudo chown $(whoami) /etc/authbind/byport/80
+$ sudo chmod 100 /etc/authbind/byport/80
+
+# Site setup:
 $ git clone https://github.com/fstd/pstd.git
 $ cd pstd
 $ mkdir pastes
-$ ./pstd_server.pl -l 0.0.0.0:8080 -H example.com
+# Then depending on whether or not authbind was used, one of the following:
+$ ./pstd_server.pl -l 0.0.0.0:8080 -H example.com  #without authbind
+$ authbind --deep ./pstd_server.pl -l 0.0.0.0:80 -H example.com  #with authbind
 
-If that worked, http://example.com/ should contain further information on how to submit pastes
-
-To be able to use a low-numbered port without having to run as root, a local NAT
-can be done; alternatively, if running Linux, authbind(1) can be used.
+If that worked, http://example.com/ (or http://example.com:8080/) should contain
+further information on how to submit pastes
 
 
-Note that there is no rate limiting yet.
+Quirks
+------
+I didn't want to run a httpd in front of this because what we really need from
+HTTP is but a tiny subset of the protocol; hence a httpd (or even a HTTP lib)
+would add considerable attack surface.  Therefore pstd_server.pl generates and
+parses the few HTTP messages we support itself.  For a web browser looking at
+pastes, this shouldn't matter at all, but for submitting pastes (which can't,
+by design, be done in a web browser), there's one major consequence:
+The only way to submit a paste is to submit it as a POST request *without any
+non-identity "Transfer-Encoding" (like, chunked, or multipart w/ boundary)*.
+This implies that the POST request has a "Content-Length" header.
+This is the reason for why curl(1) cannot be used to submit pastes like on
+sprunge; wget(1) (--post-file) has to be used instead.  However, wget(1) comes
+with its own problem of being unable to POST standard input (for it needs to
+know the data length in advance).
+To cope with this problems, a POSIX shell script "pstd.sh" has been written to
+facilitate more convenient pasting (including standard input; it's essentially
+a wrapper around wget(1) using a temporary file).  This script is automatically
+made available as paste "0" and referred to in the (web-visible) manual page.
+
+
+This and that
+-------------
+- The paste IDs we hand out start as 2-letter permutations of [A-Za-z0-0]. Once
+  that namespace is (more or less) full (as determined by 10 failed attempts to
+  generate an unused ID of that length), the ID length will be raised to three,
+  and so forth, up to 32.  This provides plenty or namespace to make sure that
+  before we run out of IDs, we'll run out of hard disk space (or sunlight...).
+
+- There's a upper limit on how large a single paste may be, defaults to 256 KB
+
+- Requesting the site root will produce a man page with further information on
+  how to submit pastes
+
+- To avoid running as root but still be able to bind to a low-numbered port,
+  a NAT setup can be used, or on Linux, authbind(1) has been shown to work.
+
+
+Reasons for writing this
+------------------------
+On 2015-05-15, sprunge.us was unavailable for about 24 hours, and at that time
+was used as the primary (and only) paste backend for a number of scripts (most
+notably http://github.com/fstd/cwarn).  I considered running the sprunge code
+(http://github.com/rupa/sprunge) but decided against it because I'm not so fond
+of python and/or depending on google's cloud storage (or any cloud storage for
+that matter).  Regular web-based pastebins also didn't fit my use-case for they
+make it unnecessarily difficult to submit data without a web browser.
+
+
+Todo
+----
+- There is no rate limiting yet, so we're subject to DoS attacks. A good
+  strategy on that is TBD (maybe: allow N pastes in a (sliding) time window
+  T seconds long, plus a hard limit of M pastes per day per IP address (with
+  M around 100-1000))
+
+- Optional syntax hilighting?
+
+- There is no mechanism for limited-lifespan pastes yet
+
+
+Author + License
+----------------
+(C) 2015, Timo Buhrmester
+
+pstd is licensed under a 2-clause BSD license, without any warranty, but with
+best wishes and in the hope it will be useful (also see the LICENSE file).
