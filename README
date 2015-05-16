@@ -86,6 +86,8 @@ Todo
 
 - In-memory caching of the most frequenly requested pastes?
 
+- Compressed storage?
+
 Author + License
 ----------------
 (C) 2015, Timo Buhrmester
