@@ -1,2 +1,16 @@
-# pstd
-pasted - command line pastebin
+# pstd (pasted) - command line pastebin
+
+
+Quickstart for running a pstd paste site
+========================================
+(To be documented in detail later, but as a quick example, this is how http://paste.pr0.tips/ is run)
+
+$ git clone https://github.com/fstd/pstd.git
+$ cd pstd
+$ mkdir pastes
+$ ./pstd_server.pl -l 0.0.0.0:80 -H example.com
+
+If that worked, http://example.com/ should contain further information on how to submit pastes
+
+
+Note that there is no rate limiting yet.
