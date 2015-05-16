@@ -7,6 +7,7 @@ use v5.10;
 use IO::Select;
 use IO::Socket::INET;
 use Getopt::Std;
+use POSIX 'strftime';
 use Data::Dumper;
 
 my $prgnam = $0 =~ s/^.*\///r;
@@ -38,8 +39,8 @@ my %opts;
 my $year = '2015';
 my $author = 'Timo Buhrmester';
 
-
-sub W { say STDERR "$prgnam: ".($_[0] =~ s/[\r\n]/\$/grm); }
+sub now { return strftime('%Y-%m-%d %H:%M:%S', localtime); }
+sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
 sub E { W "ERROR: $_[0]"; exit 1; }
 sub D { W $_[0] if $verbose; }
 
@@ -47,6 +48,7 @@ sub Usage
 {
 	say STDERR "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>] [-d <path>] [-m <path>]";
 	say STDERR "  -h: Show this usage statement";
+	say STDERR "  -V: Print version on stdout";
 	say STDERR "  -v: Be more verbose";
 	say STDERR "  -l [addr:]port: Listen on port and optionally bind to address";
 	say STDERR "  -m path: Path to manual (pstd.1)";
@@ -305,7 +307,12 @@ sub respond
 
 
 # Parse command-line, overriding defaults
-Usage if !getopts("hvl:d:m:H:c:", \%opts);
+Usage if !getopts("hvVl:d:m:H:c:", \%opts);
+
+if (defined $opts{V}) {
+	say "$version";
+	exit 0;
+}
 
 Usage                 if defined $opts{h};
 $verbose = 1          if defined $opts{v};
