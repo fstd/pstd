@@ -40,7 +40,7 @@ my %opts;
 my $year = '2015';
 my $author = 'Timo Buhrmester';
 
-sub now { return strftime('%Y-%m-%d %H:%M:%S', localtime); }
+sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
 sub E { W "ERROR: $_[0]"; exit 1; }
 sub D { W $_[0] if $verbose; }
