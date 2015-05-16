@@ -1,16 +1,16 @@
 #!/bin/sh
 
-set -e
-
+# If -x is given as the *first* argument, enable shell tracing
 if [ "$1" = "-x" ]; then shift; set -x; fi
+
 prgnam="$(basename "$0")"
+
 
 Usage() # Print usage statement and exit
 {
-	printf 'Usage %s [-h] [-s <pastesite>]\n' "$prgnam"
+	printf 'Usage %s [-h] [-s <pastesite>]\n' "$prgnam" >&2
 	exit 1
 }
-
 
 Bomb() # Complain loudly and exit
 {
@@ -18,27 +18,49 @@ Bomb() # Complain loudly and exit
 	exit 1
 }
 
+# Check if wget is present, abort if not
 which wget >/dev/null || Bomb "We need wget"
 
+# The default paste site to use.  When pstd_server.pl arranges for this script
+# to be available as paste "0", this variable is automatically rewritten to
+# whatever argument to -H was supplied, or else to what hostname(1) said.
 site='127.0.0.1:8080'
 
+
+# We'll need these two tempfiles later and arrange for them to be rm'ed on exit
+tmpin="$(mktemp /tmp/paste.XXXXXXXX)"
+tmpout="$(mktemp /tmp/paste.XXXXXXXX)"
+trap "rm -f '$tmpin' '$tmpout'" EXIT
+
+
+# Parse command line arguments
 while getopts "s:h" i; do
 	case "$i" in
 	s) site="$OPTARG" ;;
 	*) Usage ;;
 	esac
 done
+shift $((OPTIND-1))
 
-tmp=$(mktemp /tmp/paste.XXXXXXXX)
-tmpout=$(mktemp /tmp/paste.XXXXXXXX)
-trap "rm -f '$tmp' '$tmpout'" EXIT
+# If a file is given on the command line, paste that. Else, paste standard input.
+if [ $# -gt 0 ]; then
+	[ -r "$1" ] || Bomb "Cannot read '$1'"
 
-cat >$tmp
+	# Warn about superfluous argumnents
+	[ $# -gt 1 ] && printf '%s: Ignoring all but the first argument\n' "$prgnam" >&2
 
-if ! wget -q -O - --post-file $tmp "http://$site" >$tmpout; then
-	Bomb "wget failed :O"
+	in="$1"
+else
+	cat >"$tmpin"
+	in="$tmpin"
 fi
 
-cat $tmpout
+# Paste what $in refers to
+wget -q -O - --post-file "$in" "http://$site" >"$tmpout" || Bomb "wget failed :O"
+
+# And output the returned link (or error)
+cat "$tmpout"
 
 exit 0
+
+#2015, Timo Buhrmester
