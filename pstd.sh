@@ -4,11 +4,15 @@
 if [ "$1" = "-x" ]; then shift; set -x; fi
 
 prgnam="$(basename "$0")"
+version='0.0.1'
 
 
 Usage() # Print usage statement and exit
 {
-	printf 'Usage %s [-h] [-s <pastesite>]\n' "$prgnam" >&2
+	printf 'Usage %s [-h] [-s <pastesite>] [<file>]\n' "$prgnam" >&2
+	printf '  If <file> is absent or `-`, we paste stdin.\n' >&2
+	printf '  The default paste site is `%s`.\n\n' "$site" >&2
+	printf 'v%s, 2015, Timo Buhrmester\n' "$version" >&2
 	exit 1
 }
 
@@ -42,12 +46,12 @@ while getopts "s:h" i; do
 done
 shift $((OPTIND-1))
 
-# If a file is given on the command line, paste that. Else, paste standard input.
-if [ $# -gt 0 ]; then
-	[ -r "$1" ] || Bomb "Cannot read '$1'"
+# Warn about superfluous argumnents
+[ $# -gt 1 ] && printf '%s: Ignoring all but the first argument\n' "$prgnam" >&2
 
-	# Warn about superfluous argumnents
-	[ $# -gt 1 ] && printf '%s: Ignoring all but the first argument\n' "$prgnam" >&2
+# If a file is given on the command line, paste that. Else, paste standard input.
+if [ $# -gt 0 -a "$1" != '-' ]; then
+	[ -r "$1" ] || Bomb "Cannot read '$1'"
 
 	in="$1"
 else
