@@ -38,7 +38,6 @@ my %datalen;
 my %opts;
 
 my $year = '2015';
-my $author = 'Timo Buhrmester';
 
 sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
@@ -70,7 +69,7 @@ sub Usage
 	say STDERR "  -c path: Path to pstd.sh client-script (becomes a paste referred to by the manpage)";
 	say STDERR "  -L path: Path to logfile";
 	say STDERR "  -H FQDN: Our hostname";
-	say STDERR "v$version, written by $author, $year";
+	say STDERR "v$version, written by Timo Buhrmester, $year";
 	exit 1;
 }
 
