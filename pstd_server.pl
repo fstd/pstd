@@ -42,8 +42,8 @@ my $author = 'Timo Buhrmester';
 
 sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
-sub E { W "ERROR: $_[0]"; exit 1; }
-sub D { W $_[0] if $verbose; }
+sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
+sub D { W "DBG: $_[0]" if $verbose; }
 sub L
 {
 	return if (!$logfile);
@@ -197,8 +197,10 @@ sub process_dispatch
 		$resp=process_GET($clt, $who, $1);
 	} elsif ($readbuf{$who} =~ /^GET \/ /) {
 		$resp=manpage;
+		L "$who: Manpage";
 	} else {
 		W "$who: Request not understood";
+		L "$who: Request not understood: '$readbuf{$who}'";
 		$resp = "ERROR: Request not understood\n";
 	}
 

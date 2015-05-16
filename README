@@ -84,6 +84,7 @@ Todo
 
 - There is no mechanism for limited-lifespan pastes yet
 
+- In-memory caching of the most frequenly requested pastes?
 
 Author + License
 ----------------
