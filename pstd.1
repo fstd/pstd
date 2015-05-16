@@ -1,4 +1,4 @@
-pstd(1)                             FOOPASTE                            pstd(1)
+pstd(1)                               PSTD                              pstd(1)
 
 NAME
     pstd: another command line pastebin.
@@ -13,7 +13,7 @@ SYNOPSIS
     $ Or:
     $  pstd < <file>
     $ Or if you don't feel like using the paste script:
-    $  wget -q --post-file <file> http://paste.pr0.tips/
+    $  wget -q -O - --post-file <file> http://paste.pr0.tips/
 
 DESCRIPTION
     pstd (pasted) is yet another command-line pastebin similar to and inspired by sprunge.us.
@@ -22,7 +22,7 @@ DESCRIPTION
 EXAMPLES
     $ cat /etc/passwd | pstd
     $ pstd -s other.pstd.site.com < /etc/passwd
-    $ wget -q --post-file /etc/passwd http://paste.pr0.tips/
+    $ wget -q -O - --post-file /etc/passwd http://paste.pr0.tips/
 
 SEE ALSO
     http://github.com/fstd/pstd
