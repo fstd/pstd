@@ -300,7 +300,7 @@ $sel->add($sck);
 while(1)
 {
 	D "Selecting...";
-	my @rdbl = $sel->can_read(10);
+	my @rdbl = $sel->can_read;
 	D "Selected ".(0+@rdbl);
 
 	if (!@rdbl) {
