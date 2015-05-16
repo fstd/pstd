@@ -42,8 +42,6 @@ my $author = 'Timo Buhrmester';
 
 sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
-sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
-sub D { W "DBG: $_[0]" if $verbose; }
 sub L
 {
 	return if (!$logfile);
@@ -57,6 +55,8 @@ sub L
 	say $fhnd "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm);
 	close $fhnd;
 }
+sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
+sub D { W "DBG: $_[0]" if $verbose; }
 
 sub Usage
 {
