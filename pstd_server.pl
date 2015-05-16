@@ -22,9 +22,7 @@ my $cltscript = 'pstd.sh'; # -c, we need to know this because we distribute this
 my $verbose = 0; # -v
 my $myhost = ''; # If not overridden by -H, we figure it out by running hostname(1)
 my $logfile = ''; # Don't log by default
-
-# The largest single paste we'll accept, in bytes
-my $max_buflen = 256*1024;
+my $maxbuflen = 256*1024; # -s, The largest single paste we'll accept, in bytes
 
 # Paste-ID alphabet and the shortest length of IDs we'll hand out
 my @idalpha = ("A".."Z", "a".."z", "0".."9");
@@ -59,18 +57,24 @@ sub D { W "DBG: $_[0]" if $verbose; }
 
 sub usage
 {
-	say STDERR "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>] [-d <path>] [-m <path>]";
-	say STDERR "  -h: Show this usage statement";
-	say STDERR "  -V: Print version on stdout";
-	say STDERR "  -v: Be more verbose";
-	say STDERR "  -l [addr:]port: Listen on port and optionally bind to address";
-	say STDERR "  -m path: Path to manual (pstd.1)";
-	say STDERR "  -d path: Path to paste directory";
-	say STDERR "  -c path: Path to pstd.sh client-script (becomes a paste referred to by the manpage)";
-	say STDERR "  -L path: Path to logfile";
-	say STDERR "  -H FQDN: Our hostname";
-	say STDERR "v$version, written by Timo Buhrmester, $year";
-	exit 1;
+	my ($str, $ec) = @_;
+
+	print $str "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>]"
+	    ." [-d <path>] [-m <path>]\n"
+	    ."  -h: Show this usage statement\n"
+	    ."  -V: Print version on stdout\n"
+	    ."  -v: Be more verbose\n"
+	    ."  -l [addr:]port: Listen on port, optionally bind to addr\n"
+	    ."  -m path: Path to manual (pstd.1)\n"
+	    ."  -d path: Path to paste directory\n"
+	    ."  -c path: Path to pstd.sh client-script (becomes a paste\n"
+	    ."           referred to by the manpage)\n"
+	    ."  -L path: Path to logfile\n"
+	    ."  -H FQDN: Our hostname\n"
+	    ."  -s size: Maximum paste size in KiB (this isn't exact \n"
+	    ."           because it does not account for the HTTP Header\n"
+	    ."v$version, written by Timo Buhrmester, $year\n";
+	exit $ec;
 }
 
 
@@ -246,8 +250,8 @@ sub handle_clt
 	$readbuf{$who} .= $data;
 
 	my $buflen = length $readbuf{$who};
-	if ($buflen > $max_buflen) {
-		W "$who: Too much data ($buflen/$max_buflen)";
+	if ($buflen > $maxbuflen) {
+		W "$who: Too much data ($buflen/$maxbuflen)";
 		respond($clt, "ERROR: Too much data\n");
 		return 0;
 	}
@@ -330,20 +334,21 @@ sub respond
 
 
 # Parse command-line, overriding defaults
-usage if !getopts("hvVl:d:m:H:c:L:", \%opts);
+usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:", \%opts);
 
 if (defined $opts{V}) {
-	say "$version";
+	print "$version\n";
 	exit 0;
 }
 
-usage                 if defined $opts{h};
+usage(\*STDOUT, 0)    if defined $opts{h};
 $verbose = 1          if defined $opts{v};
 $manpath = $opts{m}   if defined $opts{m};
 $pastedir = $opts{d}  if defined $opts{d};
 $cltscript = $opts{c} if defined $opts{c};
 $myhost = $opts{H}    if defined $opts{H};
 $logfile = $opts{L}   if defined $opts{L};
+$maxbuflen = $opts{s} if defined $opts{s};
 
 if (defined $opts{l}) {
 	my $tmp = $opts{l};
@@ -357,6 +362,8 @@ if (defined $opts{l}) {
 E "Could not read man page '$manpath' (Bad -m? Try -h)" if ! -r $manpath;
 E "Could not read client script '$cltscript' (Bad -c? Try -h)" if ! -r $cltscript;
 E "Could not access paste directory '$pastedir' (Bad -d? Try -h)" if ! -d $pastedir;
+E "Invalid maximum paste size '$maxbuflen' (Bad -s? Try -h)" if !($maxbuflen =~ /^[0-9]+$/);
+$maxbuflen *= 1024 if defined $opts{s}; # Is given in KiB on the command line
 
 L "Logfile created" if $logfile and ! -e $logfile;
 E "Cannot write to logfile '$logfile' (Bad -L? Try -h)" if $logfile and ! -w $logfile;
