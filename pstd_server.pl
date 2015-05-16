@@ -6,33 +6,57 @@ use v5.10;
 
 use IO::Select;
 use IO::Socket::INET;
+use Getopt::Std;
 use Data::Dumper;
 
-my $prgnam = $0;
-my $verbose = 1;
+my $prgnam = $0 =~ s/^.*\///r;
+my $version = '0.0.0';
 
-# When changing these, don't forget the default value
-# for the `site` variable in pstd.sh!
-my $bindaddr = "127.0.0.1";
-my $bindport = 8080; # on Linux, authbind(1) can be used to listen on low ports without having to run as root
-my $myhost = "$bindaddr:$bindport"; #set this to your FQDN followed by :port (unless 80)
+# These are defaults that can be overridden with command-line switches
+my $bindaddr = "127.0.0.1"; # -l
+my $bindport = 8080; # -l, On Linux, authbind(1) can be used to listen on low ports without having to run as root
+my $pastedir = 'pastes'; # -d
+my $manpath = 'pstd.1'; # -m
+my $cltscript = 'pstd.sh'; # -c, we need to know this because we distribute this as (synthetical) paste "0"
+my $verbose = 0; # -v
+my $myhost = ''; # If not overridden by -H, we figure it out by running hostname(1)
 
-my $pastedir = 'pastes';
-my $manpath = 'pstd.1';
-
+# The largest single paste we'll accept, in bytes
 my $max_buflen = 256*1024;
 
+# Paste-ID alphabet and the shortest length of IDs we'll hand out
+my @idalpha = ("A".."Z", "a".."z", "0".."9");
 my $minidlen = 2;
 
+# Client read buffers and -state
 my %readbuf;
 my %datalen;
 
-my @idalpha = ("A".."Z", "a".."z", "0".."9");
+# getopts
+my %opts;
+
+my $year = '2015';
+my $author = 'Timo Buhrmester';
 
 
-sub E { say STDERR "$prgnam: ERROR: ".($_[0] =~ s/[\r\n]/\$/grm); exit 1; }
 sub W { say STDERR "$prgnam: ".($_[0] =~ s/[\r\n]/\$/grm); }
+sub E { W "ERROR: $_[0]"; exit 1; }
 sub D { W $_[0] if $verbose; }
+
+sub Usage
+{
+	say STDERR "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>] [-d <path>] [-m <path>]";
+	say STDERR "  -h: Show this usage statement";
+	say STDERR "  -v: Be more verbose";
+	say STDERR "  -l [addr:]port: Listen on port and optionally bind to address";
+	say STDERR "  -m path: Path to manual (pstd.1)";
+	say STDERR "  -d path: Path to paste directory";
+	say STDERR "  -c path: Path to pstd.sh client-script (becomes a paste referred to by the manpage)";
+	say STDERR "  -H FQDN: Our hostname";
+	say STDERR "v$version, written by $author, $year";
+	exit 1;
+}
+
 
 # Generate an unused paste ID
 sub gen_id
@@ -59,6 +83,7 @@ sub gen_id
 	return '';
 }
 
+
 # Read and return the man page
 sub manpage
 {
@@ -72,7 +97,7 @@ sub manpage
 	my $man = join '', @lines;
 	close $fhnd;
 
-	return $man;
+	return $man =~ s/MYHOST/$myhost/rg;
 }
 
 
@@ -102,6 +127,7 @@ sub process_GET
 
 	return $paste;
 }
+
 
 # Deal with something (most likely paste.sh or wget) submitting
 # a paste.  We don't support much HTTP, so this may not work
@@ -134,6 +160,7 @@ sub process_POST
 	return "http://$myhost/$id\n";
 }
 
+
 # This is called once we have a complete header (for a GET)
 # or a complete request (for a POST), it dispatches to
 # process_GET and process_POST
@@ -158,6 +185,7 @@ sub process_dispatch
 
 	return $resp;
 }
+
 
 # Read some more data for the given client and call process_dispatch
 # on it once we have enough. Bail out if we get too much
@@ -255,6 +283,7 @@ sub handle_clt
 	return 1;
 }
 
+
 # respond to client with a fake 200 OK and the actual response
 sub respond
 {
@@ -272,6 +301,48 @@ sub respond
 }
 
 
+# -----------------------------------------------------------------------------
+
+
+# Parse command-line, overriding defaults
+Usage if !getopts("hvl:d:m:H:c:", \%opts);
+
+Usage                 if defined $opts{h};
+$verbose = 1          if defined $opts{v};
+$manpath = $opts{m}   if defined $opts{m};
+$pastedir = $opts{d}  if defined $opts{d};
+$cltscript = $opts{c} if defined $opts{c};
+$myhost = $opts{H}    if defined $opts{H};
+
+if (defined $opts{l}) {
+	my $tmp = $opts{l};
+	if (!($tmp =~ /(?:(^.+):)?([0-9]+)$/)) {
+		E 'Bad argument to -l (should be "PORT" or "ADDR:PORT")';
+	}
+	$bindaddr = $1 ? $1 : "0.0.0.0";
+	$bindport = $2;
+}
+
+E "Could not read man page '$manpath' (Bad -m? Try -h)" if ! -r $manpath;
+E "Could not read client script '$cltscript' (Bad -c? Try -h)" if ! -r $cltscript;
+E "Could not access paste directory '$pastedir' (Bad -d? Try -h)" if ! -d $pastedir;
+
+if (!$myhost) {
+	my @out = `hostname`;
+	$myhost = $out[0];
+	chop $myhost;
+
+	E "Failed to figure out hostname, use -H <FQDN>" if !$myhost;
+	W "Determined our hostname to be '$myhost' (override with -H)";
+}
+
+D "Will listen on $bindaddr:$bindport; accessible as http://$myhost/";
+
+# Generate paste '0' because it contains the client script we advertise in the man page
+`sed "s/^site=.*\$/site='$myhost'/" $cltscript >$pastedir/0`;
+E "Failed to generate paste 0 (the client script)" if (${^CHILD_ERROR_NATIVE} != 0);
+
+
 $| = 1;
 
 my $sck = new IO::Socket::INET (
@@ -285,10 +356,9 @@ my $sck = new IO::Socket::INET (
 ) or E "Could not create socket $!\n";
 
 
-my @scks = ($sck);
 my $sel = IO::Select->new();
-
 $sel->add($sck);
+
 while(1)
 {
 	D "Selecting...";

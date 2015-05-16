@@ -4,16 +4,16 @@ NAME
     pstd: another command line pastebin.
 
 SYNOPSIS
-    # Installation
-    #  wget -O /usr/local/bin/pstd http://paste.pr0.tips/0 && chmod +x /usr/local/bin/pstd
-    # (You can also skip installing this and use wget directly, see below)
+    Installation:
+      # wget -O /usr/local/bin/pstd http://MYHOST/0 && chmod +x /usr/local/bin/pstd
+        (You can also skip installing this and use wget directly, see below)
     
-    $ Use:
-    $  <command> | pstd
-    $ Or:
-    $  pstd < <file>
-    $ Or if you don't feel like using the paste script:
-    $  wget -q -O - --post-file <file> http://paste.pr0.tips/
+    Use:
+      $ <command> | pstd
+    Or:
+      $ pstd < <file>
+    Or if you don't feel like using the paste script:
+      $ wget -q -O - --post-file <file> http://MYHOST/
 
 DESCRIPTION
     pstd (pasted) is yet another command-line pastebin similar to and inspired by sprunge.us.
@@ -22,7 +22,8 @@ DESCRIPTION
 EXAMPLES
     $ cat /etc/passwd | pstd
     $ pstd -s other.pstd.site.com < /etc/passwd
-    $ wget -q -O - --post-file /etc/passwd http://paste.pr0.tips/
+    $ wget -q -O - --post-file /etc/passwd http://MYHOST/
+      (wget does not support POSTing stdin, so using the pstd script is recommended)
 
 SEE ALSO
     http://github.com/fstd/pstd
@@ -30,3 +31,6 @@ SEE ALSO
 CREDITS
     Lots of inspiration (but no code) taken from http://sprunge.us
     (http://github.com/rupa/sprunge)
+
+AUTHOR
+    2015, Timo Buhrmester <fstd.lkml@gmail.com>
