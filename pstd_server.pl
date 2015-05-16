@@ -57,7 +57,7 @@ sub L
 sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
 sub D { W "DBG: $_[0]" if $verbose; }
 
-sub Usage
+sub usage
 {
 	say STDERR "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>] [-d <path>] [-m <path>]";
 	say STDERR "  -h: Show this usage statement";
@@ -325,14 +325,14 @@ sub respond
 
 
 # Parse command-line, overriding defaults
-Usage if !getopts("hvVl:d:m:H:c:L:", \%opts);
+usage if !getopts("hvVl:d:m:H:c:L:", \%opts);
 
 if (defined $opts{V}) {
 	say "$version";
 	exit 0;
 }
 
-Usage                 if defined $opts{h};
+usage                 if defined $opts{h};
 $verbose = 1          if defined $opts{v};
 $manpath = $opts{m}   if defined $opts{m};
 $pastedir = $opts{d}  if defined $opts{d};
