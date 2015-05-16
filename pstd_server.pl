@@ -406,7 +406,7 @@ while(1)
 				W "Failed to accept: $!";
 				next;
 			}
-			my $who = $clt->peerhost().":".$clt->peerport();
+			my $who = $clt->peerhost();
 			D "$who: Connected";
 
 			$sel->add($clt);
@@ -416,7 +416,7 @@ while(1)
 			next;
 		}
 
-		my $who = $s->peerhost().":".$s->peerport();
+		my $who = $s->peerhost();
 		D "$who: Readable";
 
 		if (!handle_clt($s, $who)) {
