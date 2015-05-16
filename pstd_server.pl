@@ -6,19 +6,21 @@ use v5.10;
 
 use IO::Select;
 use IO::Socket::INET;
-use Socket qw(SOCK_STREAM getaddrinfo);
 use Data::Dumper;
 
 my $prgnam = $0;
 my $verbose = 1;
 
+# When changing these, don't forget the default value
+# for the `site` variable in pstd.sh!
 my $bindaddr = "127.0.0.1";
-my $bindport = 2345;
-my $myhost = "127.0.0.1:$bindport";
+my $bindport = 8080; # on Linux, authbind(1) can be used to listen on low ports without having to run as root
+my $myhost = "$bindaddr:$bindport"; #set this to your FQDN followed by :port (unless 80)
+
 my $pastedir = 'pastes';
+my $manpath = 'pstd.1';
 
 my $max_buflen = 256*1024;
-my $sel = IO::Select->new();
 
 my $minidlen = 2;
 
@@ -61,8 +63,8 @@ sub GenID
 sub Manpage
 {
 	my $fhnd;
-	if (!open $fhnd, '<', 'pstd.1') {
-		W "Failed to open pstd.1: $!";
+	if (!open $fhnd, '<', $manpath) {
+		W "Failed to open $manpath: $!";
 		return "ERROR: Manpage not found\n";
 	}
 
@@ -283,23 +285,34 @@ my $sck = new IO::Socket::INET (
 	Type => SOCK_STREAM,
 	Proto => 'tcp',
 	Listen => 64,
-	ReuseAddr => 1,
-	ReusePort => 1,
-	Blocking => 0,
+	Reuse => 1,
+	Blocking => 1,
 	LocalAddr => $bindaddr,
 	LocalPort => $bindport
 ) or E "Could not create socket $!\n";
 
 
-$sel->add($sck);
 
+my @scks = ($sck);
+my $sel = IO::Select->new();
+
+$sel->add($sck);
 while(1)
 {
-	my @rdbl = $sel->can_read(1);
+	D "Selecting...";
+	my @rdbl = $sel->can_read(10);
+	D "Selected ".(0+@rdbl);
+
+	if (!@rdbl) {
+		D "Nothing selected";
+		next;
+	}
+
 	my @drop = ();
 
 	foreach my $s (@rdbl) {
 		if ($s == $sck) {
+			D "Listener is readable...";
 			my $clt = $sck->accept();
 			if (!$clt) {
 				W "Failed to accept: $!";
@@ -315,16 +328,19 @@ while(1)
 			next;
 		}
 
+		my $who = $s->peerhost().":".$s->peerport();
+		D "$who: Readable";
+
 		if (!HandleClt $s) {
-			my $who = $s->peerhost().":".$s->peerport();
-			D "$who: Dropping";
+			D "$who: Dropping $s";
 			push @drop, $s;
 		}
 	}
 
 	foreach my $s (@drop) {
-		$s->close();
+		D "Closing and removing $s";
 		$sel->remove($s);
+		$s->close();
 	}
 }
 

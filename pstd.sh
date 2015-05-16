@@ -20,7 +20,7 @@ Bomb() # Complain loudly and exit
 
 which wget >/dev/null || Bomb "We need wget"
 
-site='127.0.0.1:2345'
+site='127.0.0.1:8080'
 
 while getopts "s:h" i; do
 	case "$i" in
