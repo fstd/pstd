@@ -11,7 +11,7 @@ use POSIX 'strftime';
 use Data::Dumper;
 
 my $prgnam = $0 =~ s/^.*\///r;
-my $version = '0.0.0';
+my $version = '0.0.1';
 
 # These are defaults that can be overridden with command-line switches
 my $bindaddr = "127.0.0.1"; # -l

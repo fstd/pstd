@@ -1,16 +1,21 @@
-# pstd (pasted) - command line pastebin
+pstd (pasted) - command line pastebin (version 0.0.1)
+=====================================================
+
 
 
 Quickstart for running a pstd paste site
-========================================
+----------------------------------------
 (To be documented in detail later, but as a quick example, this is how http://paste.pr0.tips/ is run)
 
 $ git clone https://github.com/fstd/pstd.git
 $ cd pstd
 $ mkdir pastes
-$ ./pstd_server.pl -l 0.0.0.0:80 -H example.com
+$ ./pstd_server.pl -l 0.0.0.0:8080 -H example.com
 
 If that worked, http://example.com/ should contain further information on how to submit pastes
+
+To be able to use a low-numbered port without having to run as root, a local NAT
+can be done; alternatively, if running Linux, authbind(1) can be used.
 
 
 Note that there is no rate limiting yet.
