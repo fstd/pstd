@@ -21,6 +21,7 @@ my $manpath = 'pstd.1'; # -m
 my $cltscript = 'pstd.sh'; # -c, we need to know this because we distribute this as (synthetical) paste "0"
 my $verbose = 0; # -v
 my $myhost = ''; # If not overridden by -H, we figure it out by running hostname(1)
+my $logfile = ''; # Don't log by default
 
 # The largest single paste we'll accept, in bytes
 my $max_buflen = 256*1024;
@@ -43,6 +44,19 @@ sub now { return strftime('%Y-%m-%d %H:%M:%S', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
 sub E { W "ERROR: $_[0]"; exit 1; }
 sub D { W $_[0] if $verbose; }
+sub L
+{
+	return if (!$logfile);
+
+	my $fhnd;
+	if (!open $fhnd, '>>', "$logfile") {
+		W "Failed to open $logfile for appending: $!";
+		return;
+	}
+
+	say $fhnd "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm);
+	close $fhnd;
+}
 
 sub Usage
 {
@@ -54,6 +68,7 @@ sub Usage
 	say STDERR "  -m path: Path to manual (pstd.1)";
 	say STDERR "  -d path: Path to paste directory";
 	say STDERR "  -c path: Path to pstd.sh client-script (becomes a paste referred to by the manpage)";
+	say STDERR "  -L path: Path to logfile";
 	say STDERR "  -H FQDN: Our hostname";
 	say STDERR "v$version, written by $author, $year";
 	exit 1;
@@ -126,6 +141,7 @@ sub process_GET
 	close $fhnd;
 
 	D "$who: Got $id";
+	L "$who: Got $id";
 
 	return $paste;
 }
@@ -158,6 +174,7 @@ sub process_POST
 	close $fhnd;
 
 	D "$who: Pasted $id";
+	L "$who: Pasted $id";
 
 	return "http://$myhost/$id\n";
 }
@@ -307,7 +324,7 @@ sub respond
 
 
 # Parse command-line, overriding defaults
-Usage if !getopts("hvVl:d:m:H:c:", \%opts);
+Usage if !getopts("hvVl:d:m:H:c:L:", \%opts);
 
 if (defined $opts{V}) {
 	say "$version";
@@ -320,6 +337,7 @@ $manpath = $opts{m}   if defined $opts{m};
 $pastedir = $opts{d}  if defined $opts{d};
 $cltscript = $opts{c} if defined $opts{c};
 $myhost = $opts{H}    if defined $opts{H};
+$logfile = $opts{L}   if defined $opts{L};
 
 if (defined $opts{l}) {
 	my $tmp = $opts{l};
@@ -333,6 +351,9 @@ if (defined $opts{l}) {
 E "Could not read man page '$manpath' (Bad -m? Try -h)" if ! -r $manpath;
 E "Could not read client script '$cltscript' (Bad -c? Try -h)" if ! -r $cltscript;
 E "Could not access paste directory '$pastedir' (Bad -d? Try -h)" if ! -d $pastedir;
+
+L "Logfile created" if $logfile and ! -e $logfile;
+E "Cannot write to logfile '$logfile' (Bad -L? Try -h)" if $logfile and ! -w $logfile;
 
 if (!$myhost) {
 	my @out = `hostname`;
