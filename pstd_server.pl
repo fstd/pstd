@@ -122,7 +122,8 @@ sub manpage
 # pass back to the client (i.e. ideally, the actual paste)
 sub process_GET
 {
-	my ($clt, $who, $id) = @_;
+	my ($clt, $id) = @_;
+	my $who = $clt->peerhost();
 
 	if (! -e "$pastedir/$id") {
 		W "$who: Requested nonexistant paste $id";
@@ -152,7 +153,8 @@ sub process_GET
 # and no transfer-encoding.  wget --post-file http://.. is okay.
 sub process_POST
 {
-	my ($clt, $who) = @_;
+	my ($clt) = @_;
+	my $who = $clt->peerhost();
 
 	my $id = gen_id;
 
@@ -184,16 +186,17 @@ sub process_POST
 # process_GET and process_POST
 sub process_dispatch
 {
-	my ($clt, $who) = @_;
+	my ($clt) = @_;
+	my $who = $clt->peerhost();
 
 	my $resp;
 
 	D "$who: Processing '$readbuf{$who}'";
 
 	if ($readbuf{$who} =~ /^POST \//) {
-		$resp=process_POST($clt, $who);
+		$resp=process_POST($clt);
 	} elsif ($readbuf{$who} =~ /^GET \/([a-zA-Z0-9]+)\b/) {
-		$resp=process_GET($clt, $who, $1);
+		$resp=process_GET($clt, $1);
 	} elsif ($readbuf{$who} =~ /^GET \/ /) {
 		$resp=manpage;
 		L "$who: Manpage";
@@ -212,7 +215,8 @@ sub process_dispatch
 # Return 0 to drop the client, 1 to keep going
 sub handle_clt
 {
-	my ($clt, $who) = @_;
+	my ($clt) = @_;
+	my $who = $clt->peerhost();
 
 	D "$who: Handling";
 
@@ -222,7 +226,7 @@ sub handle_clt
 	# I suppose empty data means EOF, but not quite sure. XXX
 	if ($data eq '') {
 		W "$who: Empty read";
-		respond($clt, $who, "ERROR: You what?\n");
+		respond($clt, "ERROR: You what?\n");
 		return 0;
 	}
 
@@ -234,7 +238,7 @@ sub handle_clt
 			$datalen{$who} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";
-			respond($clt, $who, "ERROR: Request not understood\n");
+			respond($clt, "ERROR: Request not understood\n");
 			return 0;
 		}
 	}
@@ -244,7 +248,7 @@ sub handle_clt
 	my $buflen = length $readbuf{$who};
 	if ($buflen > $max_buflen) {
 		W "$who: Too much data ($buflen/$max_buflen)";
-		respond($clt, $who, "ERROR: Too much data\n");
+		respond($clt, "ERROR: Too much data\n");
 		return 0;
 	}
 
@@ -261,7 +265,7 @@ sub handle_clt
 			my $match = $hdr =~ /Content-Length: ([0-9]+)/;
 			if ($match and !$1) {
 				W "$who: No Content-Length in header";
-				respond($clt, $who, "ERROR: Need Content-Length Header\n");
+				respond($clt, "ERROR: Need Content-Length Header\n");
 				return 0;
 			}
 			$datalen{$who} = $1 + 4 + length $hdr;
@@ -272,7 +276,7 @@ sub handle_clt
 			if ($match and $1) {
 				if ($1 ne 'Identity' and $1 ne 'None') {
 					W "$who: Bad TE '$1'";
-					respond($clt, $who, "ERROR: Bad Transfer-Encoding (use Identity)\n");
+					respond($clt, "ERROR: Bad Transfer-Encoding (use Identity)\n");
 					return 0;
 				}
 			}
@@ -280,7 +284,7 @@ sub handle_clt
 	} elsif ($datalen{$who} == 0) {
 		# a GET, process_dispatch once we have a complete request
 		if ($readbuf{$who} =~ /\r\n\r\n/) {
-			respond($clt, $who, process_dispatch($clt, $who));
+			respond($clt, process_dispatch($clt));
 			return 0;
 		}
 	}
@@ -290,12 +294,12 @@ sub handle_clt
 	if ($datalen{$who} > 0) {
 		if (length $readbuf{$who} == $datalen{$who}) {
 			# a POST, we got everything.
-			respond($clt, $who, process_dispatch($clt, $who));
+			respond($clt, process_dispatch($clt));
 			return 0;
 		} elsif (length $readbuf{$who} > $datalen{$who}) {
 			# a POST, we got more than advertised.
 			W "$who: More data than advertised";
-			respond($clt, $who, "ERROR: More data than advertised. Nice try?\n");
+			respond($clt, "ERROR: More data than advertised. Nice try?\n");
 			return 0;
 		}
 	}
@@ -307,7 +311,8 @@ sub handle_clt
 # respond to client with a fake 200 OK and the actual response
 sub respond
 {
-	my ($clt, $who, $data) = @_;
+	my ($clt, $data) = @_;
+	my $who = $clt->peerhost();
 
 	my $len = length $data;
 	my $resp = "HTTP/1.1 200 OK\r\n".
