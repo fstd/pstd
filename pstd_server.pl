@@ -69,11 +69,22 @@ my $year = '2015';
 my $sck;
 my $sel;
 
+my $quit = 0;
 my $inforeq;
 
 sub INFO_handler
 {
         $inforeq = 1;
+}
+
+sub HK_handler
+{
+        $hk_next = time;
+}
+
+sub INT_handler
+{
+        $quit = 1;
 }
 
 sub L;
@@ -502,6 +513,7 @@ sub dump_state
 	say STDERR "\$ratetspan = '$ratetspan'";
 	say STDERR "\$year = '$year'";
 	say STDERR "\$inforeq = '$inforeq'";
+	say STDERR "\$quit = '$quit'";
 	say STDERR "\$hk_interval = '$hk_interval'";
 	say STDERR "\$hk_next = '$hk_next'";
 	say STDERR "\$recent_purge_age = '$recent_purge_age'";
@@ -599,13 +611,15 @@ $sck = new IO::Socket::INET (
 	LocalPort => $bindport
 ) or E "Could not create socket $!\n";
 
-$SIG{'USR1'} = 'INFO_handler';
 $SIG{'INFO'} = 'INFO_handler' if $^O =~ /^(.*bsd)|darwin$/;
+$SIG{'USR1'} = 'INFO_handler';
+$SIG{'USR2'} = 'HK_handler';
+$SIG{'INT'} = 'INT_handler';
 
 $sel = IO::Select->new();
 $sel->add($sck);
 
-while(1)
+while (!$quit)
 {
 	D "Selecting...";
 	my @rdbl = $sel->can_read;
@@ -614,6 +628,8 @@ while(1)
 		dump_state;
 		$inforeq = 0;
 	}
+
+	last if ($quit);
 
 	if (time >= $hk_next) {
 		housekeep
@@ -660,5 +676,8 @@ while(1)
 }
 
 $sck->close();
+
+L "Terminating";
+W "Terminating";
 
 #2015, Timo Buhrmester
