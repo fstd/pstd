@@ -295,7 +295,10 @@ sub process_POST
 
 	my $id = gen_id;
 
-	return "ERROR: Out of IDs\n" if (!$id);
+	if (!$id) {
+		W "Out of IDs (what?)";
+		return "ERROR: Out of IDs\n";
+	}
 
 	my $paste = $readbuf{$whoipp} =~ s/^(.*?)\r\n\r\n//rs;
 
