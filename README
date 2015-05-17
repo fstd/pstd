@@ -11,13 +11,15 @@ http://paste.pr0.tips/ is run (referring to it as example.com henceforth)
 $ sudo touch /etc/authbind/byport/80
 $ sudo chown $(whoami) /etc/authbind/byport/80
 $ sudo chmod 100 /etc/authbind/byport/80
+# (authbind's policy is that a user may bind to a the port if they have
+# execute permissions on the file /etc/authbind/byport/<theport>)
 
 # Site setup:
 $ git clone https://github.com/fstd/pstd.git
 $ cd pstd
 $ mkdir pastes
 # Then depending on whether or not authbind was used, one of the following:
-$ ./pstd_server.pl -l 0.0.0.0:8080 -H example.com  #without authbind
+$ ./pstd_server.pl -l 0.0.0.0:8080 -H example.com:8080  #without authbind
 $ authbind --deep ./pstd_server.pl -l 0.0.0.0:80 -H example.com  #with authbind
 
 If that worked, http://example.com/ (or http://example.com:8080/) should contain
