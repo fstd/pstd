@@ -426,6 +426,8 @@ sub dump_state
 	say STDERR "\$myhost = '$myhost'";
 	say STDERR "\$logfile = '$logfile'";
 	say STDERR "\$maxbuflen = '$maxbuflen'";
+	say STDERR "\$compr = '$compr'";
+	say STDERR "\$decompr = '$decompr'";
 	say STDERR "\$minidlen = '$minidlen'";
 	say STDERR "\$ratesmpl = '$ratesmpl'";
 	say STDERR "\$ratetspan = '$ratetspan'";
