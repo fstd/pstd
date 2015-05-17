@@ -208,6 +208,7 @@ sub process_POST
 {
 	my ($clt) = @_;
 	my $who = $clt->peerhost();
+	my $whoipp = $who.":".$clt->peerport();
 
 	my $twait = ratelimit_check $who;
 	if ($twait) {
@@ -218,7 +219,7 @@ sub process_POST
 
 	my $id = gen_id;
 
-	my $paste = $readbuf{$who} =~ s/^(.*?)\r\n\r\n//rs;
+	my $paste = $readbuf{$whoipp} =~ s/^(.*?)\r\n\r\n//rs;
 
 	if ($paste eq '') {
 		W "$who: Empty paste";
@@ -248,21 +249,22 @@ sub process_dispatch
 {
 	my ($clt) = @_;
 	my $who = $clt->peerhost();
+	my $whoipp = $who.":".$clt->peerport();
 
 	my $resp;
 
-	D "$who: Processing '$readbuf{$who}'";
+	D "$who: Processing '$readbuf{$whoipp}'";
 
-	if ($readbuf{$who} =~ /^POST \//) {
+	if ($readbuf{$whoipp} =~ /^POST \//) {
 		$resp=process_POST($clt);
-	} elsif ($readbuf{$who} =~ /^GET \/([a-zA-Z0-9]+)\b/) {
+	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)\b/) {
 		$resp=process_GET($clt, $1);
-	} elsif ($readbuf{$who} =~ /^GET \/ /) {
+	} elsif ($readbuf{$whoipp} =~ /^GET \/ /) {
 		$resp=manpage;
 		L "$who: Manpage";
 	} else {
 		W "$who: Request not understood";
-		L "$who: Request not understood: '$readbuf{$who}'";
+		L "$who: Request not understood: '$readbuf{$whoipp}'";
 		$resp = "ERROR: Request not understood\n";
 	}
 
@@ -277,6 +279,7 @@ sub handle_clt
 {
 	my ($clt) = @_;
 	my $who = $clt->peerhost();
+	my $whoipp = $who.":".$clt->peerport();
 
 	D "$who: Handling";
 
@@ -291,11 +294,11 @@ sub handle_clt
 	}
 
 	# some early sanity check, this assumes the first couple bytes come in in one chunk, though.
-	if (!length $readbuf{$who}) {
+	if (!length $readbuf{$whoipp}) {
 		if ($data =~ /^POST \//) {
-			$datalen{$who} = -1; #don't know yet
+			$datalen{$whoipp} = -1; #don't know yet
 		} elsif ($data =~ /^GET \/(?:[a-zA-Z0-9]+)? HTTP/) {
-			$datalen{$who} = 0; #don't care
+			$datalen{$whoipp} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";
 			respond($clt, "ERROR: Request not understood\n");
@@ -303,9 +306,9 @@ sub handle_clt
 		}
 	}
 
-	$readbuf{$who} .= $data;
+	$readbuf{$whoipp} .= $data;
 
-	my $buflen = length $readbuf{$who};
+	my $buflen = length $readbuf{$whoipp};
 	if ($buflen > $maxbuflen) {
 		W "$who: Too much data ($buflen/$maxbuflen)";
 		respond($clt, "ERROR: Too much data\n");
@@ -317,9 +320,9 @@ sub handle_clt
 	# HTTP-header (i.e. till the first \r\n\r\n).  If it is -1, then
 	# this is a POST, and we haven't seen the Content-Length header yet.
 
-	if ($datalen{$who} == -1) {
+	if ($datalen{$whoipp} == -1) {
 		# POST, see if we have a header yet...
-		my $hdr = $readbuf{$who} =~ s/\r\n\r\n.*$//r;
+		my $hdr = $readbuf{$whoipp} =~ s/\r\n\r\n.*$//r;
 		if ($hdr) {
 			#... and extract the Content-Length; bail if none
 			my $match = $hdr =~ /Content-Length: ([0-9]+)/;
@@ -328,8 +331,8 @@ sub handle_clt
 				respond($clt, "ERROR: Need Content-Length Header\n");
 				return 0;
 			}
-			$datalen{$who} = $1 + 4 + length $hdr;
-			D "$who: Expecting $datalen{$who} bytes in total";
+			$datalen{$whoipp} = $1 + 4 + length $hdr;
+			D "$who: Expecting $datalen{$whoipp} bytes in total";
 
 			# Also complain if we happen to see an unsupported TE
 			$match = $hdr =~ /Transfer-Encoding: ([a-zA-Z0-9_-]+)/;
@@ -341,9 +344,9 @@ sub handle_clt
 				}
 			}
 		}
-	} elsif ($datalen{$who} == 0) {
+	} elsif ($datalen{$whoipp} == 0) {
 		# a GET, process_dispatch once we have a complete request
-		if ($readbuf{$who} =~ /\r\n\r\n/) {
+		if ($readbuf{$whoipp} =~ /\r\n\r\n/) {
 			respond($clt, process_dispatch($clt));
 			return 0;
 		}
@@ -351,12 +354,12 @@ sub handle_clt
 
 	# datalen may have changed at this point (in the above conditional)
 
-	if ($datalen{$who} > 0) {
-		if (length $readbuf{$who} == $datalen{$who}) {
+	if ($datalen{$whoipp} > 0) {
+		if (length $readbuf{$whoipp} == $datalen{$whoipp}) {
 			# a POST, we got everything.
 			respond($clt, process_dispatch($clt));
 			return 0;
-		} elsif (length $readbuf{$who} > $datalen{$who}) {
+		} elsif (length $readbuf{$whoipp} > $datalen{$whoipp}) {
 			# a POST, we got more than advertised.
 			W "$who: More data than advertised";
 			respond($clt, "ERROR: More data than advertised. Nice try?\n");
@@ -519,16 +522,19 @@ while(1)
 				next;
 			}
 			my $who = $clt->peerhost();
+			my $whoipp = $who.":".$clt->peerport();
 			D "$who: Connected";
 
 			$sel->add($clt);
-			$readbuf{$who} = '';
-			delete $datalen{$who};
+			$readbuf{$whoipp} = '';
+			delete $datalen{$whoipp};
 
 			next;
 		}
 
 		my $who = $s->peerhost();
+		my $whoipp = $who.":".$s->peerport();
+
 		D "$who: Readable";
 
 		if (!handle_clt($s, $who)) {
