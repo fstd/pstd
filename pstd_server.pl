@@ -408,7 +408,7 @@ sub handle_clt
 	if (!length $readbuf{$whoipp}) {
 		if ($data =~ /^POST \//) {
 			$datalen{$whoipp} = -1; #don't know yet
-		} elsif ($data =~ /^GET \/([a-zA-Z0-9]+)\b(?:\?([a-z]+))? HTTP/) {
+		} elsif ($data =~ /^GET \/([a-zA-Z0-9]+(?:\?([a-z]+))?)? HTTP/) {
 			$datalen{$whoipp} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";
