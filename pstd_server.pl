@@ -51,6 +51,13 @@ my %opts;
 
 my $year = '2015';
 
+my $inforeq;
+
+sub INFO_handler
+{
+        $inforeq = 1;
+}
+
 sub L;
 sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
@@ -379,6 +386,37 @@ sub respond
 }
 
 
+sub dump_state
+{
+	say STDERR "============ state dump =============";
+	say STDERR "\$^O = '$^O'";
+	say STDERR "\$0 = '$0'";
+	say STDERR "\$prgnam = '$prgnam'";
+	say STDERR "\$version = '$version'";
+	say STDERR "\$bindaddr = '$bindaddr'";
+	say STDERR "\$bindport = '$bindport'";
+	say STDERR "\$pastedir = '$pastedir'";
+	say STDERR "\$manpath = '$manpath'";
+	say STDERR "\$cltscript = '$cltscript'";
+	say STDERR "\$verbose = '$verbose'";
+	say STDERR "\$myhost = '$myhost'";
+	say STDERR "\$logfile = '$logfile'";
+	say STDERR "\$maxbuflen = '$maxbuflen'";
+	say STDERR "\$minidlen = '$minidlen'";
+	say STDERR "\$ratesmpl = '$ratesmpl'";
+	say STDERR "\$ratetspan = '$ratetspan'";
+	say STDERR "\$year = '$year'";
+	say STDERR "\$inforeq = '$inforeq'";
+
+	say STDERR "\@idalpha: '".(join '', @idalpha)."'";
+
+	print STDERR Dumper(\%readbuf) =~ s/\$VAR1/%readbuf/r;
+	print STDERR Dumper(\%datalen) =~ s/\$VAR1/%datalen/r;
+	print STDERR Dumper(\%rateinfo) =~ s/\$VAR1/%rateinfo/r;
+	print STDERR Dumper(\%opts) =~ s/\$VAR1/%opts/r;
+	say STDERR "========= End of state dump =========";
+}
+
 # -----------------------------------------------------------------------------
 
 
@@ -451,6 +489,8 @@ my $sck = new IO::Socket::INET (
 	LocalPort => $bindport
 ) or E "Could not create socket $!\n";
 
+$SIG{'USR1'} = 'INFO_handler';
+$SIG{'INFO'} = 'INFO_handler' if $^O =~ /^(.*bsd)|darwin$/;
 
 my $sel = IO::Select->new();
 $sel->add($sck);
@@ -459,6 +499,11 @@ while(1)
 {
 	D "Selecting...";
 	my @rdbl = $sel->can_read;
+
+	if ($inforeq) {
+		dump_state;
+		$inforeq = 0;
+	}
 
 	if (!@rdbl) {
 		D "Nothing selected";
