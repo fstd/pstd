@@ -10,6 +10,7 @@ use Getopt::Std;
 use POSIX 'strftime';
 use Data::Dumper;
 
+# Name and version
 my $prgnam = $0 =~ s/^.*\///r;
 my $version = '0.0.1';
 
@@ -28,8 +29,10 @@ my $maxbuflen = 256*1024; # -s, The largest single paste we'll accept, in bytes
 my @idalpha = ("A".."Z", "a".."z", "0".."9");
 my $minidlen = 2;
 
-# Client read buffers and -state
+# Map client sockets to their respective read buffers (strings)
 my %readbuf;
+
+# Map client sockets to the amount of data we expect from them
 my %datalen;
 
 # Map client IP addresses to arrays containing timestamps of their latest
@@ -48,8 +51,11 @@ my %opts;
 
 my $year = '2015';
 
+sub L;
 sub now { return strftime('%Y-%m-%d %H:%M:%S %z', localtime); }
 sub W { say STDERR "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm); }
+sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
+sub D { W "DBG: $_[0]" if $verbose; }
 sub L
 {
 	return if (!$logfile);
@@ -63,8 +69,6 @@ sub L
 	say $fhnd "$prgnam: ".now.": ".($_[0] =~ s/[\r\n]/\$/grm);
 	close $fhnd;
 }
-sub E { my $msg = $_[0]; L "ERROR: $msg"; W "ERROR: $msg"; exit 1; }
-sub D { W "DBG: $_[0]" if $verbose; }
 
 sub usage
 {
@@ -209,13 +213,13 @@ sub process_POST
 
 	if ($paste eq '') {
 		W "$who: Empty paste";
-		return "POST Error 0\n";
+		return "ERROR: Empty paste\n";
 	}
 
 	my $fhnd;
 	if (!open $fhnd, '>', "$pastedir/$id") {
 		W "$who: Failed to open $pastedir/$id for writing: $!";
-		return "POST Error 1\n";
+		return "ERROR: File error\n";
 	}
 
 	print $fhnd $paste;
