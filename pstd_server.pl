@@ -53,6 +53,10 @@ my %opts;
 
 my $year = '2015';
 
+# Socket and Select objects
+my $sck;
+my $sel;
+
 my $inforeq;
 
 sub INFO_handler
@@ -200,7 +204,7 @@ sub process_GET
 
 	if (! -e "$pastedir/$id") {
 		W "$who: Requested nonexistant paste $id";
-		return 'No such paste.';
+		return "ERROR: No such paste.\n";
 	}
 
 	my @out = `$decompr <'$pastedir/$id'`;
@@ -231,11 +235,13 @@ sub process_POST
 	my $twait = ratelimit_check $who;
 	if ($twait) {
 		W "$who: Rate limited";
-		return "ERROR: Slow down, cowboy.  $twait seconds until you may paste again!\n";
+		return "ERROR: Slow down, cowboy.  $twait seconds (and don't be early)!\n";
 	}
 
 
 	my $id = gen_id;
+
+	return "ERROR: Out of IDs\n" if (!$id);
 
 	my $paste = $readbuf{$whoipp} =~ s/^(.*?)\r\n\r\n//rs;
 
@@ -432,6 +438,9 @@ sub dump_state
 	print STDERR Dumper(\%datalen) =~ s/\$VAR1/%datalen/r;
 	print STDERR Dumper(\%rateinfo) =~ s/\$VAR1/%rateinfo/r;
 	print STDERR Dumper(\%opts) =~ s/\$VAR1/%opts/r;
+
+	print STDERR Dumper($sck) =~ s/\$VAR1/\$sck/r;
+	print STDERR Dumper($sel) =~ s/\$VAR1/\$sel/r;
 	say STDERR "========= End of state dump =========";
 }
 
@@ -503,7 +512,7 @@ W "NOT doing rate-limiting! (Bad -r and/or -R?)" if (!$ratesmpl || !$ratetspan);
 
 $| = 1;
 
-my $sck = new IO::Socket::INET (
+$sck = new IO::Socket::INET (
 	Type => SOCK_STREAM,
 	Proto => 'tcp',
 	Listen => 64,
@@ -516,7 +525,7 @@ my $sck = new IO::Socket::INET (
 $SIG{'USR1'} = 'INFO_handler';
 $SIG{'INFO'} = 'INFO_handler' if $^O =~ /^(.*bsd)|darwin$/;
 
-my $sel = IO::Select->new();
+$sel = IO::Select->new();
 $sel->add($sck);
 
 while(1)
