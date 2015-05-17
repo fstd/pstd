@@ -43,8 +43,8 @@ my %datalen;
 # might keep the rate-limiting in place for arbitrary timespans.  This is
 # considered a feature.
 my %rateinfo;
-my $ratesmpl = 3;
-my $ratetspan = 10;
+my $ratesmpl = 5;
+my $ratetspan = 30;
 
 # getopts
 my %opts;
@@ -88,7 +88,9 @@ sub usage
 	    ."  -H FQDN: Our hostname\n"
 	    ."  -s size: Maximum paste size in KiB (this isn't exact \n"
 	    ."           because it does not account for the HTTP Header\n"
-	    ."v$version, written by Timo Buhrmester, $year\n";
+	    ."  -r num:  Rate limit on `num` pastes in `time` (see -R) secs\n"
+	    ."  -R time: See -r. Giving 0 (to -r or -R) means no rate-limit\n"
+	    ."\nv$version, written by Timo Buhrmester, $year\n";
 	exit $ec;
 }
 

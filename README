@@ -61,6 +61,15 @@ This and that
 - To avoid running as root but still be able to bind to a low-numbered port,
   a NAT setup can be used, or on Linux, authbind(1) has been shown to work.
 
+- Rate limiting is controlled by the -r and -R command line options.
+  The argument to -R specifies the size of a (sliding) time window to be
+  considered (in seconds), while -r gives the maximum number of attempts to
+  paste that may happen (per IP) in that time window. Attempting to paste
+  while already rate-limited may extend the period the offender has to wait.
+  Note that the amount of memory required per pasting IP goes up linearly
+  with the argument to -r (but not -R), so if memory is a concern, better
+  turn down -R rather than turning up -r to relax the rate limiting.
+
 
 Reasons for writing this
 ------------------------
@@ -75,11 +84,6 @@ make it unnecessarily difficult to submit data without a web browser.
 
 Todo
 ----
-- There is no rate limiting yet, so we're subject to DoS attacks. A good
-  strategy on that is TBD (maybe: allow N pastes in a (sliding) time window
-  T seconds long, plus a hard limit of M pastes per day per IP address (with
-  M around 100-1000))
-
 - Optional syntax hilighting?
 
 - There is no mechanism for limited-lifespan pastes yet
@@ -87,6 +91,7 @@ Todo
 - In-memory caching of the most frequenly requested pastes?
 
 - Compressed storage?
+
 
 Author + License
 ----------------
