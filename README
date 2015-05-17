@@ -72,6 +72,17 @@ This and that
   with the argument to -r (but not -R), so if memory is a concern, better
   turn down -R rather than turning up -r to relax the rate limiting.
 
+- Using the -C and -D command line switches, programs for compression and
+  decompression of pastes can be specified.  The arguments to -C and -D should
+  be strings representing the command-lines (incl. switches, if any) to
+  invoke a compressor and a decompressor, respectively, in a way that they
+  act as filter (i.e. (de)compress stdin to stdout).
+  For example: -C gzip -D gzcat
+  DO NOT CHANGE THE USED COMPRESSION ALGORITHM FOR EXISTING PASTEDIRS!
+  By default, no compression is done (technically, it's -C cat -D cat).
+  Since these programs are shell-ed out, be careful what you specify.
+  The script does not care if it's 'rm -rf ~' or a fork bomb.
+
 
 Reasons for writing this
 ------------------------
@@ -91,8 +102,6 @@ Todo
 - There is no mechanism for limited-lifespan pastes yet
 
 - In-memory caching of the most frequenly requested pastes?
-
-- Compressed storage?
 
 
 Author + License

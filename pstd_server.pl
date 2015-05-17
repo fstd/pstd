@@ -24,6 +24,8 @@ my $verbose = 0; # -v
 my $myhost = ''; # If not overridden by -H, we figure it out by running hostname(1)
 my $logfile = ''; # Don't log by default
 my $maxbuflen = 256*1024; # -s, The largest single paste we'll accept, in bytes
+my $compr = 'cat'; # -C, (default is no compression, hence cat)
+my $decompr = 'cat'; # -D, (default is no decompression, hence cat)
 
 # Paste-ID alphabet and the shortest length of IDs we'll hand out
 my @idalpha = ("A".."Z", "a".."z", "0".."9");
@@ -81,7 +83,7 @@ sub usage
 {
 	my ($str, $ec) = @_;
 
-	print $str "Usage: $prgnam [-hv] [-l [addr:]port] [-H <myhost>]"
+	print $str "Usage: $prgnam [-options (see below)]"
 	    ." [-d <path>] [-m <path>]\n"
 	    ."  -h: Show this usage statement\n"
 	    ."  -V: Print version on stdout\n"
@@ -97,10 +99,28 @@ sub usage
 	    ."           because it does not account for the HTTP Header\n"
 	    ."  -r num:  Rate limit on `num` pastes in `time` (see -R) secs\n"
 	    ."  -R time: See -r. Giving 0 (to -r or -R) means no rate-limit\n"
+	    ."  -C cmdl: Compression program to use. The argument should\n"
+	    ."           be a program (incl. possible switches) that\n"
+	    ."           compresses stdin to stdout (e.g. 'gzip -c')\n"
+	    ."  -D cmdl: Decompression program to use. The argument should\n"
+	    ."           be a program (incl. possible switches) that\n"
+	    ."           decompresses stdin to stdout (e.g. 'gzcat')\n"
+	    ."           The default is not to compress/decompress.\n"
+	    ."           Once decided for a compression format, you cannot\n"
+	    ."           turn around and use something else without clearing\n"
+	    ."           the paste directory.\n"
 	    ."\nv$version, written by Timo Buhrmester, $year\n";
 	exit $ec;
 }
 
+
+sub test_compression
+{
+	my $teststr = "foo bar\n baz";
+	my @out = `echo '$teststr' | $compr | $decompr`;
+
+	return join('', @out) eq "$teststr\n"; #echo appends a newline
+}
 
 # Generate an unused paste ID
 sub gen_id
@@ -183,15 +203,13 @@ sub process_GET
 		return 'No such paste.';
 	}
 
-	my $fhnd;
-	if (!open $fhnd, '<', "$pastedir/$id") {
-		W "$who: Failed to open $pastedir/$id: $!";
-		return 'GET Error 1';
+	my @out = `$decompr <'$pastedir/$id'`;
+	if (${^CHILD_ERROR_NATIVE} != 0) {
+		W "$who: Failed to obtain paste '$pastedir/$id'";
+		return "ERROR: Failed to load paste\n";
 	}
 
-	my @lines = <$fhnd>;
-	my $paste = join '', @lines;
-	close $fhnd;
+	my $paste = join '', @out;
 
 	D "$who: Got $id";
 	L "$who: Got $id";
@@ -226,14 +244,11 @@ sub process_POST
 		return "ERROR: Empty paste\n";
 	}
 
-	my $fhnd;
-	if (!open $fhnd, '>', "$pastedir/$id") {
-		W "$who: Failed to open $pastedir/$id for writing: $!";
-		return "ERROR: File error\n";
+	`echo '$paste' | $compr >"$pastedir/$id"`;
+	if (${^CHILD_ERROR_NATIVE} != 0) {
+		W "$who: Failed to paste '$pastedir/$id'";
+		return "ERROR: Failed to write error\n";
 	}
-
-	print $fhnd $paste;
-	close $fhnd;
 
 	D "$who: Pasted $id";
 	L "$who: Pasted $id";
@@ -424,7 +439,7 @@ sub dump_state
 
 
 # Parse command-line, overriding defaults
-usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:r:R:", \%opts);
+usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:r:R:C:D:", \%opts);
 
 if (defined $opts{V}) {
 	print "$version\n";
@@ -441,6 +456,8 @@ $logfile = $opts{L}   if defined $opts{L};
 $maxbuflen = $opts{s} if defined $opts{s};
 $ratesmpl = $opts{r}  if defined $opts{r};
 $ratetspan = $opts{R} if defined $opts{R};
+$compr = $opts{C}     if defined $opts{C};
+$decompr = $opts{D}   if defined $opts{C};
 
 if (defined $opts{l}) {
 	my $tmp = $opts{l};
@@ -472,10 +489,14 @@ if (!$myhost) {
 	W "Determined our hostname to be '$myhost' (override with -H)";
 }
 
+if (!test_compression) {
+	E "Chosen compression/decompression does not work! (see -h)";
+}
+
 D "Will listen on $bindaddr:$bindport; accessible as http://$myhost/";
 
 # Generate paste '0' because it contains the client script we advertise in the man page
-`sed "s/^site=.*\$/site='$myhost'/" $cltscript >$pastedir/0`;
+`sed "s/^site=.*\$/site='$myhost'/" $cltscript | $compr >$pastedir/0`;
 E "Failed to generate paste 0 (the client script)" if (${^CHILD_ERROR_NATIVE} != 0);
 
 W "NOT doing rate-limiting! (Bad -r and/or -R?)" if (!$ratesmpl || !$ratetspan);
