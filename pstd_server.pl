@@ -541,6 +541,8 @@ while(1)
 			D "$who: Dropping";
 			$sel->remove($s);
 			$s->close();
+			delete $readbuf{$whoipp};
+			delete $datalen{$whoipp};
 		}
 	}
 }
