@@ -289,7 +289,7 @@ sub process_POST
 	my $twait = ratelimit_check $who;
 	if ($twait) {
 		W "$who: Rate limited";
-		return "ERROR: Slow down, cowboy.  $twait seconds (and don't be early)!\n";
+		return "ERROR: Slow down, cowboy.  Try again in $twait seconds (and don't be early)!\n";
 	}
 
 
