@@ -4,7 +4,7 @@
 if [ "$1" = "-x" ]; then shift; set -x; fi
 
 prgnam="$(basename "$0")"
-version='0.0.1'
+version='0.0.2'
 
 
 Usage() # Print usage statement and exit

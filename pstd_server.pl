@@ -14,7 +14,7 @@ use Digest::MD5 qw(md5_hex);
 
 # Name and version
 my $prgnam = $0 =~ s/^.*\///r;
-my $version = '0.0.1';
+my $version = '0.0.2';
 
 # These are defaults that can be overridden with command-line switches
 my $bindaddr = "127.0.0.1"; # -l
