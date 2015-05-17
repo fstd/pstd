@@ -83,6 +83,13 @@ This and that
   Since these programs are shell-ed out, be careful what you specify.
   The script does not care if it's 'rm -rf ~' or a fork bomb.
 
+- If a link to a paste is suffixed with ?<lang>, then syntax hilighting for
+  language <lang> is generated, so long as the site has a program that does
+  that.  This is controlled by the -y command line switch, the argument of
+  which must be a comma separated string of <lang>:<commandline> tokens,
+  where <commandline> represents the way to invoke an external filter that,
+  when presented with a source file on stdin, produces formatted HTML on stdout.
+  E.g. -y 'c:chilight -f html_color,java:javaprettifier -foobar'
 
 Reasons for writing this
 ------------------------
@@ -97,8 +104,6 @@ make it unnecessarily difficult to submit data without a web browser.
 
 Todo
 ----
-- Optional syntax hilighting?
-
 - There is no mechanism for limited-lifespan pastes yet
 
 - In-memory caching of the most frequenly requested pastes?
