@@ -390,7 +390,7 @@ sub handle_clt
 	# I suppose empty data means EOF, but not quite sure. XXX
 	if ($data eq '') {
 		W "$who: Empty read";
-		respond($clt, "ERROR: You what?\n");
+		respond($clt, "text/plain", "ERROR: You what?\n");
 		return 0;
 	}
 
@@ -402,7 +402,7 @@ sub handle_clt
 			$datalen{$whoipp} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";
-			respond($clt, "ERROR: Request not understood\n");
+			respond($clt, "text/plain", "ERROR: Request not understood\n");
 			return 0;
 		}
 	}
@@ -412,7 +412,7 @@ sub handle_clt
 	my $buflen = length $readbuf{$whoipp};
 	if ($buflen > $maxbuflen) {
 		W "$who: Too much data ($buflen/$maxbuflen)";
-		respond($clt, "ERROR: Too much data\n");
+		respond($clt, "text/plain", "ERROR: Too much data\n");
 		return 0;
 	}
 
@@ -429,7 +429,7 @@ sub handle_clt
 			my $match = $hdr =~ /Content-Length: ([0-9]+)/;
 			if ($match and !$1) {
 				W "$who: No Content-Length in header";
-				respond($clt, "ERROR: Need Content-Length Header\n");
+				respond($clt, "text/plain", "ERROR: Need Content-Length Header\n");
 				return 0;
 			}
 			$datalen{$whoipp} = $1 + 4 + length $hdr;
@@ -440,7 +440,7 @@ sub handle_clt
 			if ($match and $1) {
 				if ($1 ne 'Identity' and $1 ne 'None') {
 					W "$who: Bad TE '$1'";
-					respond($clt, "ERROR: Bad Transfer-Encoding (use Identity)\n");
+					respond($clt, "text/plain", "ERROR: Bad Transfer-Encoding (use Identity)\n");
 					return 0;
 				}
 			}
@@ -448,7 +448,11 @@ sub handle_clt
 	} elsif ($datalen{$whoipp} == 0) {
 		# a GET, process_dispatch once we have a complete request
 		if ($readbuf{$whoipp} =~ /\r\n\r\n/) {
-			respond($clt, process_dispatch($clt));
+			my $resp = process_dispatch($clt);
+
+			# hack: deliver manpage as HTML (for links, mainly)
+			my $ctype = ($resp =~ /^<html>/) ? "text/html" : "text/plain";
+			respond($clt, $ctype, $resp);
 			return 0;
 		}
 	}
@@ -458,12 +462,12 @@ sub handle_clt
 	if ($datalen{$whoipp} > 0) {
 		if (length $readbuf{$whoipp} == $datalen{$whoipp}) {
 			# a POST, we got everything.
-			respond($clt, process_dispatch($clt));
+			respond($clt, "text/plain", process_dispatch($clt));
 			return 0;
 		} elsif (length $readbuf{$whoipp} > $datalen{$whoipp}) {
 			# a POST, we got more than advertised.
 			W "$who: More data than advertised";
-			respond($clt, "ERROR: More data than advertised. Nice try?\n");
+			respond($clt, "text/plain", "ERROR: More data than advertised. Nice try?\n");
 			return 0;
 		}
 	}
@@ -475,12 +479,12 @@ sub handle_clt
 # respond to client with a fake 200 OK and the actual response
 sub respond
 {
-	my ($clt, $data) = @_;
+	my ($clt, $ctype, $data) = @_;
 	my $who = $clt->peerhost();
 
 	my $len = length $data;
 	my $resp = "HTTP/1.1 200 OK\r\n".
-	           "Content-Type: text/plain; charset=UTF-8\r\n".
+	           "Content-Type: $ctype; charset=UTF-8\r\n".
 	           "Content-Length: $len\r\n".
 	           "Connection: close\r\n\r\n$data";
 
