@@ -32,6 +32,17 @@ my $minidlen = 2;
 my %readbuf;
 my %datalen;
 
+# Map client IP addresses to arrays containing timestamps of their latest
+# $ratesmpl attempts to paste.  Rate-limiting occurs once the difference
+# between the first and the last element of such an array is smaller than
+# $ratetspan.  Not only successful pastes, but also running into the
+# rate-limiter count towards it, so trying to paste when already rate-limited
+# might keep the rate-limiting in place for arbitrary timespans.  This is
+# considered a feature.
+my %rateinfo;
+my $ratesmpl = 3;
+my $ratetspan = 10;
+
 # getopts
 my %opts;
 
@@ -104,6 +115,31 @@ sub gen_id
 }
 
 
+# Register event and return how many seconds the offender needs to wait
+# until they are permitted to paste again
+sub ratelimit_check
+{
+	my ($who) = @_;
+
+	return 0 if (!$ratesmpl or !$ratetspan);
+
+	$rateinfo{$who} = [] if not exists $rateinfo{$who};
+	my $aref = $rateinfo{$who};
+
+	shift @$aref if @$aref >= $ratesmpl;
+	push @$aref, time;
+
+	if (@$aref >= $ratesmpl) {
+		my $tdiff = @{ $aref }[@$aref - 1] - @{ $aref }[0];
+		if ($tdiff < $ratetspan) { # going too fast...
+			return $ratetspan - (time - @{ $aref }[@$aref - 2]);
+		}
+	}
+
+	return 0; #okay, not rate limited (yet)
+}
+
+
 # Read and return the man page
 sub manpage
 {
@@ -159,6 +195,13 @@ sub process_POST
 {
 	my ($clt) = @_;
 	my $who = $clt->peerhost();
+
+	my $twait = ratelimit_check $who;
+	if ($twait) {
+		W "$who: Rate limited";
+		return "ERROR: Slow down, cowboy.  $twait seconds until you may paste again!\n";
+	}
+
 
 	my $id = gen_id;
 
@@ -334,7 +377,7 @@ sub respond
 
 
 # Parse command-line, overriding defaults
-usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:", \%opts);
+usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:r:R:", \%opts);
 
 if (defined $opts{V}) {
 	print "$version\n";
@@ -349,6 +392,8 @@ $cltscript = $opts{c} if defined $opts{c};
 $myhost = $opts{H}    if defined $opts{H};
 $logfile = $opts{L}   if defined $opts{L};
 $maxbuflen = $opts{s} if defined $opts{s};
+$ratesmpl = $opts{r}  if defined $opts{r};
+$ratetspan = $opts{R} if defined $opts{R};
 
 if (defined $opts{l}) {
 	my $tmp = $opts{l};
@@ -362,8 +407,11 @@ if (defined $opts{l}) {
 E "Could not read man page '$manpath' (Bad -m? Try -h)" if ! -r $manpath;
 E "Could not read client script '$cltscript' (Bad -c? Try -h)" if ! -r $cltscript;
 E "Could not access paste directory '$pastedir' (Bad -d? Try -h)" if ! -d $pastedir;
-E "Invalid maximum paste size '$maxbuflen' (Bad -s? Try -h)" if !($maxbuflen =~ /^[0-9]+$/);
+E "Invalid maximum paste size '$maxbuflen' (Bad -s? Try -h)" if !($maxbuflen =~ /^[1-9][0-9]*$/);
 $maxbuflen *= 1024 if defined $opts{s}; # Is given in KiB on the command line
+
+E "Invalid number of rate limiting samples '$ratesmpl' (Bad -r? Try -h)" if !($ratesmpl =~ /^[0-9]+$/);
+E "Invalid timespan for rate-limiting '$ratetspan' (Bad -R? Try -h)" if !($ratetspan =~ /^[0-9]+$/);
 
 L "Logfile created" if $logfile and ! -e $logfile;
 E "Cannot write to logfile '$logfile' (Bad -L? Try -h)" if $logfile and ! -w $logfile;
@@ -383,6 +431,7 @@ D "Will listen on $bindaddr:$bindport; accessible as http://$myhost/";
 `sed "s/^site=.*\$/site='$myhost'/" $cltscript >$pastedir/0`;
 E "Failed to generate paste 0 (the client script)" if (${^CHILD_ERROR_NATIVE} != 0);
 
+W "NOT doing rate-limiting! (Bad -r and/or -R?)" if (!$ratesmpl || !$ratetspan);
 
 $| = 1;
 
