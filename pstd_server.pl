@@ -44,6 +44,11 @@ my %datalen;
 # files in the event that some script or person keeps pasting the same thing.
 my %recent;
 
+my $hk_interval = 30*60;
+my $hk_next = time + $hk_interval;
+my $recent_purge_age = 60*60*24;
+my $rateinfo_purge_age; # set to 2*$ratetspan later
+
 # Map client IP addresses to arrays containing timestamps of their latest
 # $ratesmpl attempts to paste.  Rate-limiting occurs once the difference
 # between the first and the last element of such an array is smaller than
@@ -133,6 +138,7 @@ sub test_compression
 	return join('', @out) eq "$teststr\n"; #echo appends a newline
 }
 
+
 # Generate an unused paste ID
 sub gen_id
 {
@@ -156,6 +162,47 @@ sub gen_id
 	}
 
 	return '';
+}
+
+
+# The maps %recent and %rateinfo grow, but never shrink on their own.
+# Therefore, we need to occasionally iterate them and purge old stuff
+sub housekeep
+{
+	my $cnt = 0;
+	my @drop;
+	my $now = time;
+
+	D "Housekeeping";
+
+	foreach my $key (keys %recent) {
+		my $time = $recent{$key} =~ s/ .*$//r;
+
+		if ($now - $time > $recent_purge_age) {
+			push @drop, $key;
+			$cnt++;
+		}
+	}
+
+	delete $recent{$_} foreach (@drop);
+
+	D "house-kept away $cnt elements from \%recent";
+
+	$cnt = 0;
+	@drop = ();
+	foreach my $key (keys %rateinfo) {
+		my $aref = $rateinfo{$key};
+		my $time = @{ $aref }[@$aref - 1];
+
+		if ($now - $time > $rateinfo_purge_age) {
+			push @drop, $key;
+			$cnt++;
+		}
+	}
+
+	delete $rateinfo{$_} foreach (@drop);
+
+	D "house-kept away $cnt elements from \%rateinfo";
 }
 
 
@@ -452,6 +499,10 @@ sub dump_state
 	say STDERR "\$ratetspan = '$ratetspan'";
 	say STDERR "\$year = '$year'";
 	say STDERR "\$inforeq = '$inforeq'";
+	say STDERR "\$hk_interval = '$hk_interval'";
+	say STDERR "\$hk_next = '$hk_next'";
+	say STDERR "\$recent_purge_age = '$recent_purge_age'";
+	say STDERR "\$rateinfo_purge_age = '$rateinfo_purge_age;'";
 
 	say STDERR "\@idalpha: '".(join '', @idalpha)."'";
 
@@ -507,6 +558,7 @@ $maxbuflen *= 1024 if defined $opts{s}; # Is given in KiB on the command line
 
 E "Invalid number of rate limiting samples '$ratesmpl' (Bad -r? Try -h)" if !($ratesmpl =~ /^[0-9]+$/);
 E "Invalid timespan for rate-limiting '$ratetspan' (Bad -R? Try -h)" if !($ratetspan =~ /^[0-9]+$/);
+$rateinfo_purge_age = 2*$ratetspan;
 
 L "Logfile created" if $logfile and ! -e $logfile;
 E "Cannot write to logfile '$logfile' (Bad -L? Try -h)" if $logfile and ! -w $logfile;
@@ -558,6 +610,11 @@ while(1)
 	if ($inforeq) {
 		dump_state;
 		$inforeq = 0;
+	}
+
+	if (time >= $hk_next) {
+		housekeep
+		$hk_next = time + $hk_interval;
 	}
 
 	if (!@rdbl) {
