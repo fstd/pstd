@@ -63,6 +63,11 @@ my $ratetspan = 30;
 # getopts
 my %opts;
 
+# map from syntax hilighting language names (e.g. "c") to command lines that
+# produce HTML on stdout when presented a source file on stdin.  Elements are
+# added by the -y command line option
+my %hilite;
+
 my $year = '2015';
 
 # Socket and Select objects
@@ -264,7 +269,7 @@ sub manpage
 # pass back to the client (i.e. ideally, the actual paste)
 sub process_GET
 {
-	my ($clt, $id) = @_;
+	my ($clt, $id, $hilang) = @_;
 	my $who = $clt->peerhost();
 
 	if (! -e "$pastedir/$id") {
@@ -272,7 +277,12 @@ sub process_GET
 		return "ERROR: No such paste.\n";
 	}
 
-	my @out = `$decompr <'$pastedir/$id'`;
+	my $add = '';
+	if ($hilang and exists $hilite{$hilang}) {
+		$add = "| $hilite{$hilang}";
+	}
+
+	my @out = `$decompr <'$pastedir/$id' $add`;
 	if (${^CHILD_ERROR_NATIVE} != 0) {
 		W "$who: Failed to obtain paste '$pastedir/$id'";
 		return "ERROR: Failed to load paste\n";
@@ -358,8 +368,8 @@ sub process_dispatch
 
 	if ($readbuf{$whoipp} =~ /^POST \//) {
 		$resp=process_POST($clt);
-	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)\b/) {
-		$resp=process_GET($clt, $1);
+	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)\b(?:\?([a-z]+))?\b/) {
+		$resp=process_GET($clt, $1, $2);
 	} elsif ($readbuf{$whoipp} =~ /^GET \/ /) {
 		$resp=manpage;
 		L "$who: Manpage";
@@ -398,7 +408,7 @@ sub handle_clt
 	if (!length $readbuf{$whoipp}) {
 		if ($data =~ /^POST \//) {
 			$datalen{$whoipp} = -1; #don't know yet
-		} elsif ($data =~ /^GET \/(?:[a-zA-Z0-9]+)? HTTP/) {
+		} elsif ($data =~ /^GET \/([a-zA-Z0-9]+)\b(?:\?([a-z]+))? HTTP/) {
 			$datalen{$whoipp} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";
@@ -540,7 +550,7 @@ sub dump_state
 
 
 # Parse command-line, overriding defaults
-usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:r:R:C:D:", \%opts);
+usage(\*STDERR, 1) if !getopts("hvVl:d:m:H:c:L:s:r:R:C:D:y:", \%opts);
 
 if (defined $opts{V}) {
 	print "$version\n";
@@ -593,6 +603,20 @@ if (!$myhost) {
 
 if (!test_compression) {
 	E "Chosen compression/decompression does not work! (see -h)";
+}
+
+if (defined $opts{y}) {
+	foreach my $hi (split ',', $opts{y}) {
+		my $lang = $hi =~ s/:.*$//r;
+		my $prog = $hi =~ s/^[^:]*://r;
+		my @out = `echo 'int main(void){}' | $prog`;
+		if (${^CHILD_ERROR_NATIVE} != 0) {
+			W "Ignoring $lang syntax hilighting because 'echo some-C-code | $prog' didn't work";
+			next;
+		}
+
+		$hilite{$lang} = $prog;
+	}
 }
 
 D "Will listen on $bindaddr:$bindport; accessible as http://$myhost/";
