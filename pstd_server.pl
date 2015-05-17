@@ -9,6 +9,8 @@ use IO::Socket::INET;
 use Getopt::Std;
 use POSIX 'strftime';
 use Data::Dumper;
+use Digest::MD5 qw(md5_hex);
+
 
 # Name and version
 my $prgnam = $0 =~ s/^.*\///r;
@@ -36,6 +38,11 @@ my %readbuf;
 
 # Map client sockets to the amount of data we expect from them
 my %datalen;
+
+# Map md5 digests of recently pasted files to their respective URLs (prefixed
+# with a timestamp followed by a blank.  This is to avoid creating unnecessary
+# files in the event that some script or person keeps pasting the same thing.
+my %recent;
 
 # Map client IP addresses to arrays containing timestamps of their latest
 # $ratesmpl attempts to paste.  Rate-limiting occurs once the difference
@@ -250,6 +257,15 @@ sub process_POST
 		return "ERROR: Empty paste\n";
 	}
 
+	my $digest = md5_hex($paste);
+	if (exists $recent{$digest}) {
+		my $url = $recent{$digest} =~ s/^[^ ]+ //r;
+		my $id = $url =~ s/^.*\///r;
+		D "$who: Re-pasted $id";
+		L "$who: Re-pasted $id";
+		return "$url\n";
+	}
+
 	`echo '$paste' | $compr >"$pastedir/$id"`;
 	if (${^CHILD_ERROR_NATIVE} != 0) {
 		W "$who: Failed to paste '$pastedir/$id'";
@@ -259,7 +275,10 @@ sub process_POST
 	D "$who: Pasted $id";
 	L "$who: Pasted $id";
 
-	return "http://$myhost/$id\n";
+	my $url = "http://$myhost/$id";
+	$recent{$digest} = time.' '.$url;
+
+	return "$url\n";
 }
 
 
@@ -439,6 +458,7 @@ sub dump_state
 	print STDERR Dumper(\%readbuf) =~ s/\$VAR1/%readbuf/r;
 	print STDERR Dumper(\%datalen) =~ s/\$VAR1/%datalen/r;
 	print STDERR Dumper(\%rateinfo) =~ s/\$VAR1/%rateinfo/r;
+	print STDERR Dumper(\%recent) =~ s/\$VAR1/%recent/r;
 	print STDERR Dumper(\%opts) =~ s/\$VAR1/%opts/r;
 
 	print STDERR Dumper($sck) =~ s/\$VAR1/\$sck/r;
