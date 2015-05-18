@@ -208,7 +208,7 @@ sub housekeep
 	@drop = ();
 	foreach my $key (keys %rateinfo) {
 		my $aref = $rateinfo{$key};
-		my $time = ${ $aref }[@$aref - 1];
+		my $time = $aref->[@$aref - 1];
 
 		if ($now - $time > $rateinfo_purge_age) {
 			push @drop, $key;
@@ -237,9 +237,9 @@ sub ratelimit_check
 	push @$aref, time;
 
 	if (@$aref >= $ratesmpl) {
-		my $tdiff = ${ $aref }[@$aref - 1] - ${ $aref }[0];
+		my $tdiff = $aref->[@$aref - 1] - $aref->[0];
 		if ($tdiff < $ratetspan) { # going too fast...
-			return $ratetspan - (time - ${ $aref }[@$aref - 2]);
+			return $ratetspan - (time - $aref->[@$aref - 2]);
 		}
 	}
 
