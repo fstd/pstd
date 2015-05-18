@@ -1,5 +1,5 @@
 <html><head><title>pstd(1) - command line pastebin</title></head><body><pre>
-<b>pstd(1)</b>                           <b>PSTD</b> v0.0.2                         <b>pstd(1)</b>
+<b>pstd(1)</b>                                 <b>PSTD</b> v0.0.2                                 <b>pstd(1)</b>
 
 <b>NAME</b>
     pstd: another command line pastebin.
@@ -17,8 +17,9 @@
       $ wget -q -O - --post-file &lt;file&gt; http://MYHOST/
 
 <b>DESCRIPTION</b>
-    pstd (pasted) is yet another command-line pastebin similar to and inspired by sprunge.us.
-    It currently depends on wget(1).
+    pstd (pasted) is yet another command-line pastebin similar to and
+    inspired by sprunge.us.  It currently depends on wget(1).
+
     When requesting a paste, the URL may be suffixed with ?&lt;lang&gt;, to
       request syntax hilighting for language &lt;lang&gt;, if supported.
 
@@ -26,7 +27,7 @@
     $ cat /etc/passwd | pstd
     $ pstd -s other.pstd.site.com &lt; /etc/passwd
     $ wget -q -O - --post-file /etc/passwd http://MYHOST/
-      (wget does not support POSTing stdin, so using the pstd script is recommended)
+      (wget does not support POSTing stdin, so <a href="http://MYHOST/0">the pstd script</a> is recommended)
 
 <b>SEE ALSO</b>
     <a href="http://github.com/fstd/pstd">http://github.com/fstd/pstd</a> (source repository)
@@ -38,4 +39,7 @@
 
 <b>AUTHOR</b>
     2015, Timo Buhrmester &lt;van.fstd+pstd@gmail.com&gt;
+
+
+                                       <i>May 17, 2015</i>
 </pre></body></html>
