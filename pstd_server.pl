@@ -433,7 +433,7 @@ sub handle_clt
 
 	if ($datalen{$whoipp} == -1) {
 		# POST, see if we have a header yet...
-		my $hdr = $readbuf{$whoipp} =~ s/\r\n\r\n.*$//r;
+		my $hdr = $readbuf{$whoipp} =~ s/\r\n\r\n.*$//rs;
 		if ($hdr) {
 			#... and extract the Content-Length; bail if none
 			my $match = $hdr =~ /Content-Length: ([0-9]+)/;
