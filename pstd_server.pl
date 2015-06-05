@@ -70,6 +70,7 @@ my %hilite;
 
 my $year = '2015';
 
+my $tmpfile = "/tmp/pstd.tmp.$$";
 # Socket and Select objects
 my $sck;
 my $sel;
@@ -274,6 +275,7 @@ sub process_GET
 
 	if (! -e "$pastedir/$id") {
 		W "$who: Requested nonexistant paste $id";
+		L "$who: Nonexistant $id";
 		return "ERROR: No such paste.\n";
 	}
 
@@ -285,6 +287,7 @@ sub process_GET
 	my @out = `$decompr <'$pastedir/$id' $add`;
 	if (${^CHILD_ERROR_NATIVE} != 0) {
 		W "$who: Failed to obtain paste '$pastedir/$id'";
+		L "$who: Nonexistant $id";
 		return "ERROR: Failed to load paste\n";
 	}
 
@@ -313,14 +316,6 @@ sub process_POST
 		return "ERROR: Slow down, cowboy.  Try again in $twait seconds (and don't be early)!\n";
 	}
 
-
-	my $id = gen_id;
-
-	if (!$id) {
-		W "Out of IDs (what?)";
-		return "ERROR: Out of IDs\n";
-	}
-
 	my $paste = $readbuf{$whoipp} =~ s/^(.*?)\r\n\r\n//rs;
 
 	if ($paste eq '') {
@@ -337,10 +332,27 @@ sub process_POST
 		return "$url\n";
 	}
 
-	`echo '$paste' | $compr >"$pastedir/$id"`;
+	my $id = gen_id;
+
+	if (!$id) {
+		W "Out of IDs (what?)";
+		return "ERROR: Out of IDs\n";
+	}
+
+	my $fhnd;
+	if (!open $fhnd, '>', $tmpfile) {
+		W "$who: Failed open tempfile '$pastedir/$id'";
+		return "ERROR: Failed to write\n";
+	}
+
+	print $fhnd $paste;
+
+	close $fhnd;
+
+	`$compr <"$tmpfile" >"$pastedir/$id"`;
 	if (${^CHILD_ERROR_NATIVE} != 0) {
 		W "$who: Failed to paste '$pastedir/$id'";
-		return "ERROR: Failed to write error\n";
+		return "ERROR: Failed to write paste\n";
 	}
 
 	D "$who: Pasted $id";
