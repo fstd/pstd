@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use diagnostics;
 use v5.10;
 
 use IO::Select;
@@ -473,7 +474,7 @@ sub handle_clt
 			my $resp = process_dispatch($clt);
 
 			# hack: deliver manpage as HTML (for links, mainly)
-			my $ctype = ($resp =~ /^<html>/) ? "text/html" : "text/plain";
+			my $ctype = ($resp =~ /^<html>/ or $resp =~ /^<!DOCTYPE/) ? "text/html" : "text/plain";
 			respond($clt, $ctype, $resp);
 			return 0;
 		}
