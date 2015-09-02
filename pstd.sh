@@ -2,7 +2,7 @@
 # Wrapper around wget(1) for convenient pasting to pstd pastebins
 
 # If -x is given as the *first* argument, enable shell tracing
-if [ "$1" = "-x" ]; then shift; set -x; fi
+if [ "x$1" = "x-x" ]; then shift; set -x; fi
 
 prgnam="$(basename "$0")"
 version='0.0.2'
