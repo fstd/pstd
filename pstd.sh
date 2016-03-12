@@ -38,7 +38,7 @@ site='127.0.0.1:8080'
 # We'll need these two tempfiles later and arrange for them to be rm'ed on exit
 tmpin="$(mktemp /tmp/paste.XXXXXXXX)"
 tmpout="$(mktemp /tmp/paste.XXXXXXXX)"
-trap 'rm -f "$tmpin" "$tmpout"' EXIT
+trap "rm -f '$tmpin' '$tmpout'" EXIT
 
 
 dl=false
