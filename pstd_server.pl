@@ -11,6 +11,8 @@ use Getopt::Std;
 use POSIX 'strftime';
 use Data::Dumper;
 use Digest::MD5 qw(md5_hex);
+use Crypt::Mode::CBC;
+
 
 
 # Name and version
@@ -78,6 +80,8 @@ my $sel;
 
 my $quit = 0;
 my $inforeq;
+
+my $cbc = Crypt::Mode::CBC->new('AES');
 
 sub INFO_handler
 {
@@ -271,7 +275,7 @@ sub manpage
 # pass back to the client (i.e. ideally, the actual paste)
 sub process_GET
 {
-	my ($clt, $id, $hilang) = @_;
+	my ($clt, $id, $hilang, $key) = @_;
 	my $who = $clt->peerhost();
 
 	if (! -e "$pastedir/$id") {
@@ -285,14 +289,37 @@ sub process_GET
 		$add = "| $hilite{$hilang}";
 	}
 
-	my @out = `$decompr <'$pastedir/$id' $add`;
-	if (${^CHILD_ERROR_NATIVE} != 0) {
-		W "$who: Failed to obtain paste '$pastedir/$id'";
-		L "$who: Nonexistant $id";
-		return "ERROR: Failed to load paste\n";
+	my $paste;
+	my @data = `$decompr <'$pastedir/$id'`;
+	if ($key) {
+		my @out = `$decompr <'$pastedir/$id'`;
+		$paste = join '', @out;
+		$paste = $cbc->decrypt($paste, $key, 'deadbeefdeadfeed'); # XXX iv
+		if ($add ne '') {
+			#oh well..
+			my $fhnd;
+			if (!open $fhnd, '>', $tmpfile) {
+				W "$who: Failed open tempfile '$pastedir/$id'";
+				return "ERROR: Failed to write\n";
+			}
+
+			print $fhnd $paste;
+
+			close $fhnd;
+			@out = `cat $tmpfile $add`;
+
+			$paste = join '', @out;
+		}
+	} else {
+		my @out = `$decompr <'$pastedir/$id' $add`;
+		if (${^CHILD_ERROR_NATIVE} != 0) {
+			W "$who: Failed to obtain paste '$pastedir/$id'";
+			L "$who: Nonexistant $id";
+			return "ERROR: Failed to load paste\n";
+		}
+		$paste = join '', @out;
 	}
 
-	my $paste = join '', @out;
 
 	D "$who: Got $id";
 	L "$who: Got $id";
@@ -307,7 +334,7 @@ sub process_GET
 # and no transfer-encoding.  wget --post-file http://.. is okay.
 sub process_POST
 {
-	my ($clt) = @_;
+	my ($key, $clt) = @_;
 	my $who = $clt->peerhost();
 	my $whoipp = $who.":".$clt->peerport();
 
@@ -322,6 +349,10 @@ sub process_POST
 	if ($paste eq '') {
 		W "$who: Empty paste";
 		return "ERROR: Empty paste\n";
+	}
+
+	if ($key ne '') {
+		$paste = $cbc->encrypt($paste, $key, 'deadbeefdeadfeed'); # XXX iv
 	}
 
 	my $digest = md5_hex($paste);
@@ -360,6 +391,9 @@ sub process_POST
 	L "$who: Pasted $id";
 
 	my $url = "http://$myhost/$id";
+	if ($key ne '') {
+		$url .= "/$key"
+	}
 	$recent{$digest} = time.' '.$url;
 
 	return "$url\n";
@@ -380,9 +414,14 @@ sub process_dispatch
 	D "$who: Processing '$readbuf{$whoipp}'";
 
 	if ($readbuf{$whoipp} =~ /^POST \//) {
-		$resp=process_POST($clt);
-	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)\b(?:\?([a-z]+))?\b/) {
-		$resp=process_GET($clt, $1, $2);
+		# yes this is a hack...
+		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]+)/) {
+			$resp=process_POST($1, $clt);
+		} else {
+			$resp=process_POST('', $clt);
+		}
+	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)(?:\/([a-zA-Z0-9]{16}))?\b(?:\?([a-z]+))?\b/) {
+		$resp=process_GET($clt, $1, $3, $2);
 	} elsif ($readbuf{$whoipp} =~ /^GET \/ /) {
 		$resp=manpage;
 		L "$who: Manpage";
@@ -421,7 +460,7 @@ sub handle_clt
 	if (!length $readbuf{$whoipp}) {
 		if ($data =~ /^POST \//) {
 			$datalen{$whoipp} = -1; #don't know yet
-		} elsif ($data =~ /^GET \/([a-zA-Z0-9]+(?:\?([a-z]+))?)? HTTP/) {
+		} elsif ($data =~ /^GET \/([a-zA-Z0-9]+(?:\/([0-9a-zA-Z]{16}))?(?:\?([a-z]+))?)? HTTP/) {
 			$datalen{$whoipp} = 0; #don't care
 		} else {
 			W "$who: Bad first data chunk '$data'";

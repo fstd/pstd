@@ -26,6 +26,10 @@ Bomb() # Complain loudly and exit
 	exit 1
 }
 
+MkKey()
+{
+	tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 16
+}
 # Check if wget is present, abort if not
 which wget >/dev/null || Bomb "We need wget"
 
@@ -42,11 +46,13 @@ trap "rm -f '$tmpin' '$tmpout'" EXIT
 
 
 dl=false
+key=
 # Parse command line arguments
-while getopts "s:dh" i; do
+while getopts "s:cdh" i; do
 	case "$i" in
 	s) site="$OPTARG" ;;
 	d) dl=true ;;
+	c) key="$(MkKey)" ;;
 	*) Usage ;;
 	esac
 done
@@ -71,7 +77,7 @@ else
 	fi
 
 	# Paste what $in refers to
-	wget -q -O - --post-file "$in" "http://$site" >"$tmpout" || Bomb "wget failed :O"
+	wget -q -O - --post-file "$in" "http://$site/$key" >"$tmpout" || Bomb "wget failed :O"
 fi
 
 # And output the returned link (or error)
