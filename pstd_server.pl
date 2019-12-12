@@ -544,6 +544,11 @@ sub respond
 	my ($clt, $ctype, $data) = @_;
 	my $who = $clt->peerhost();
 
+	if (!$who) {
+		W "Don't know peer address, aborting";
+		return;
+	}
+
 	my $len = length $data;
 	my $resp = "HTTP/1.1 200 OK\r\n".
 	           "Content-Type: $ctype; charset=UTF-8\r\n".
