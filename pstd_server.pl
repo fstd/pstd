@@ -415,10 +415,13 @@ sub process_dispatch
 
 	if ($readbuf{$whoipp} =~ /^POST \//) {
 		# yes this is a hack...
-		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]+)/) {
+		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]{8} HTTP\/)/) {
 			$resp=process_POST($1, $clt);
-		} else {
+		} elsif ($readbuf{$whoipp} =~ /^POST \/ HTTP\/)/) {
 			$resp=process_POST('', $clt);
+		} else {
+			W "$who: Request not understood";
+			$resp = "ERROR: Request not understood\n";
 		}
 	} elsif ($readbuf{$whoipp} =~ /^GET \/([a-zA-Z0-9]+)(?:\/([a-zA-Z0-9]{16}))?\b(?:\?([a-z]+))?\b/) {
 		$resp=process_GET($clt, $1, $3, $2);
