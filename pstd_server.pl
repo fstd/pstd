@@ -415,7 +415,7 @@ sub process_dispatch
 
 	if ($readbuf{$whoipp} =~ /^POST \//) {
 		# yes this is a hack...
-		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]{8} HTTP\/)/) {
+		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]{8}) HTTP\//) {
 			$resp=process_POST($1, $clt);
 		} elsif ($readbuf{$whoipp} =~ /^POST \/ HTTP\//) {
 			$resp=process_POST('', $clt);
