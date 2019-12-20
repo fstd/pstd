@@ -417,7 +417,7 @@ sub process_dispatch
 		# yes this is a hack...
 		if ($readbuf{$whoipp} =~ /^POST \/([a-zA-Z0-9]{8} HTTP\/)/) {
 			$resp=process_POST($1, $clt);
-		} elsif ($readbuf{$whoipp} =~ /^POST \/ HTTP\/)/) {
+		} elsif ($readbuf{$whoipp} =~ /^POST \/ HTTP\//) {
 			$resp=process_POST('', $clt);
 		} else {
 			W "$who: Request not understood";
