@@ -25,7 +25,7 @@ Bomb() # Complain loudly and exit
 
 MkKey()
 {
-	LANG=C tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 16
+	LC_CTYPE=C tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 16
 }
 # Check if wget is present, abort if not
 which wget >/dev/null || Bomb "We need wget"
