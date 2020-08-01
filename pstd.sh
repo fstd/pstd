@@ -11,10 +11,7 @@ version='0.0.2'
 Usage() # Print usage statement and exit
 {
 	printf 'Usage %s [-h] [-s <pastesite>] [<file>]\n' "$prgnam" >&2
-	printf 'or    %s [-h] [-s <pastesite>] -d <paste_id>\n' "$prgnam" >&2
 	printf '  If <file> is absent or `-`, we paste stdin.\n' >&2
-	printf '  If -d <paste_id> is given, *down*load the respective\n' >&2
-	printf '    paste instead and output it on stdout\n' >&2
 	printf '  The default paste site is `%s`.\n\n' "$site" >&2
 	printf 'v%s, 2015, Timo Buhrmester\n' "$version" >&2
 	exit 1
