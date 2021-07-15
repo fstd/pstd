@@ -49,7 +49,7 @@ made available as paste "0" and referred to in the (web-visible) manual page.
 
 This and that
 -------------
-- The paste IDs we hand out start as 2-letter permutations of [A-Za-z0-0]. Once
+- The paste IDs we hand out start as 2-letter permutations of [A-Za-z0-9]. Once
   that namespace is (more or less) full (as determined by 10 failed attempts to
   generate an unused ID of that length), the ID length will be raised to three,
   and so forth, up to 32.  This provides plenty or namespace to make sure that
