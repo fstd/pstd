@@ -556,6 +556,7 @@ sub respond
 	my $resp = "HTTP/1.1 200 OK\r\n".
 	           "Content-Type: $ctype; charset=UTF-8\r\n".
 	           "Content-Length: $len\r\n".
+		   "Access-Control-Allow-Origin: *\r\n".
 	           "Connection: close\r\n\r\n$data";
 
 	if (!$clt->send($resp)) {
